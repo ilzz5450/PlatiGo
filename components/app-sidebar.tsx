@@ -35,13 +35,19 @@ export function AppSidebar() {
 
   return (
     <Sidebar variant="sidebar" collapsible="offcanvas">
-      <SidebarHeader className="border-b border-sidebar-border p-3 flex flex-row items-center justify-between">
+      <SidebarHeader className="border-b border-sidebar-border p-3 flex flex-row items-center justify-between relative z-40">
         <div className="flex items-center gap-2 overflow-hidden flex-1">
           <OrganizationSwitcher 
+            afterCreateOrganizationUrl="/choose-organization"
+            afterSelectOrganizationUrl="/"
+            afterLeaveOrganizationUrl="/choose-organization"
+            hidePersonal={false}
             appearance={{
               elements: {
-                rootBox: "w-full",
-                organizationSwitcherTrigger: "w-full justify-between bg-transparent hover:bg-sidebar-accent py-1.5 px-2 rounded-md",
+                rootBox: "w-full max-w-full overflow-hidden",
+                organizationSwitcherTrigger: "w-full justify-between bg-transparent hover:bg-sidebar-accent py-1.5 px-2 rounded-md text-sidebar-foreground truncate",
+                organizationPreviewMainIdentifier: "text-sidebar-foreground font-medium",
+                organizationPreviewSecondaryIdentifier: "text-muted-foreground",
               }
             }}
           />
@@ -139,7 +145,7 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border p-3">
+      <SidebarFooter className="border-t border-sidebar-border p-3 relative z-40">
         <div className="flex items-center justify-start">
           <UserButton 
             showName 
