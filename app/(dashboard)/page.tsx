@@ -15,7 +15,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 export default function Page() {
   return (
     <div className="flex min-h-screen w-full flex-col p-6">
-      <div className="flex items-center mb-4">
+      <div className="flex items-center mb-4 md:hidden">
         <SidebarTrigger className="h-9 w-9 border border-border bg-card hover:bg-accent text-foreground" />
       </div>
       <div className="flex flex-1 items-center justify-center">

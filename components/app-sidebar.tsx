@@ -25,18 +25,19 @@ import {
   TerminalSquare, 
   Activity,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Plus
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export function AppSidebar() {
-  const { state, toggleSidebar } = useSidebar()
+  const { state, toggleSidebar, isMobile } = useSidebar()
   const isCollapsed = state === "collapsed"
 
   return (
-    <Sidebar variant="sidebar" collapsible="offcanvas">
-      <SidebarHeader className="border-b border-sidebar-border p-3 flex flex-row items-center justify-between relative z-40">
-        <div className="flex items-center gap-2 overflow-hidden flex-1">
+    <Sidebar variant="sidebar" collapsible="icon">
+      <SidebarHeader className="border-b border-sidebar-border p-3 flex flex-row items-center justify-between relative z-40 group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:justify-center">
+        <div className="flex items-center gap-2 overflow-hidden flex-1 group-data-[collapsible=icon]:hidden">
           <OrganizationSwitcher 
             afterCreateOrganizationUrl="/choose-organization"
             afterSelectOrganizationUrl="/"
@@ -56,14 +57,20 @@ export function AppSidebar() {
           variant="ghost" 
           size="icon" 
           onClick={toggleSidebar}
-          className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+          className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground group-data-[collapsible=icon]:mx-auto"
           title={isCollapsed ? "Open Sidebar" : "Close Sidebar"}
         >
           {isCollapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
         </Button>
       </SidebarHeader>
 
-      <SidebarContent className="px-2 py-4">
+      <SidebarContent className="px-2 py-4 group-data-[collapsible=icon]:px-1">
+        <div className="px-2 mb-4 group-data-[collapsible=icon]:hidden">
+          <Button className="w-full justify-start gap-2 bg-black border border-white/15 text-white hover:bg-neutral-900 font-medium">
+            <Plus className="size-4 text-white" />
+            <span className="text-white">New Workflow</span>
+          </Button>
+        </div>
         <SidebarGroup>
           <SidebarGroupLabel>Workflows</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -145,14 +152,14 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border p-3 relative z-40">
-        <div className="flex items-center justify-start">
+      <SidebarFooter className="border-t border-sidebar-border p-3 relative z-40 group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center">
+        <div className="flex items-center justify-start group-data-[collapsible=icon]:justify-center">
           <UserButton 
-            showName 
+            showName={!isCollapsed}
             appearance={{
               elements: {
-                userButtonBox: "flex-row gap-3 justify-start",
-                userButtonOuterIdentifier: "text-sidebar-foreground font-medium text-sm",
+                userButtonBox: "flex-row gap-3 justify-start group-data-[collapsible=icon]:justify-center",
+                userButtonOuterIdentifier: "text-sidebar-foreground font-medium text-sm group-data-[collapsible=icon]:hidden",
               }
             }}
           />
