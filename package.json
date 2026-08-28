@@ -22,7 +22,7 @@
     "@neon/config": "^1.0.5",
     "@neon/env": "^1.1.5",
     "@shadcn/react": "^0.3.0",
-    "@trigger.dev/sdk": "^4.5.13",
+    "@trigger.dev/sdk": "4.5.13",
     "@types/three": "^0.185.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -51,7 +51,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@trigger.dev/build": "^4.5.13",
+    "@trigger.dev/build": "4.5.13",
     "@types/node": "^20",
     "@types/pg": "^8.23.1",
     "@types/react": "^19",
