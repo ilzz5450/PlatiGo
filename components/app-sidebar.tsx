@@ -37,7 +37,7 @@ export function AppSidebar() {
   return (
     <Sidebar variant="sidebar" collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border p-3 flex flex-row items-center justify-between relative z-40 group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:justify-center">
-        <div className="flex items-center gap-2 overflow-hidden flex-1 group-data-[collapsible=icon]:hidden">
+        <div className="hidden md:flex items-center gap-2 overflow-hidden flex-1 group-data-[collapsible=icon]:hidden">
           <OrganizationSwitcher 
             afterCreateOrganizationUrl="/choose-organization"
             afterSelectOrganizationUrl="/"
@@ -57,7 +57,7 @@ export function AppSidebar() {
           variant="ghost" 
           size="icon" 
           onClick={toggleSidebar}
-          className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground group-data-[collapsible=icon]:mx-auto"
+          className="hidden md:inline-flex h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground group-data-[collapsible=icon]:mx-auto"
           title={isCollapsed ? "Open Sidebar" : "Close Sidebar"}
         >
           {isCollapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
@@ -153,7 +153,7 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-3 relative z-40 group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center">
-        <div className="flex items-center justify-start group-data-[collapsible=icon]:justify-center">
+        <div className="hidden md:flex items-center justify-start group-data-[collapsible=icon]:justify-center">
           <UserButton 
             showName={!isCollapsed}
             appearance={{
