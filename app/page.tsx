@@ -1,21 +1,11 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { SignInButton, SignUpButton, Show, UserButton } from "@clerk/nextjs"
 import { toast } from "sonner"
 
 export default function Page() {
   return (
     <div className="flex min-h-svh flex-col p-6">
-      <div className="mb-8 flex items-center gap-4">
-        <Show when="signed-out">
-          <SignInButton />
-          <SignUpButton />
-        </Show>
-        <Show when="signed-in">
-          <UserButton />
-        </Show>
-      </div>
       <div className="flex max-w-md min-w-0 flex-col gap-4 text-sm leading-loose">
         <div>
           <h1 className="font-medium">Project ready!</h1>
