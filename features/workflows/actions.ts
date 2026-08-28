@@ -21,5 +21,5 @@ export async function createWorkflowAction(name: string) {
 
   revalidatePath("/", "layout")
 
-  redirect(`/workflows/${workflow.id}`)
+  redirect(`/workflows/${workflow.id}`) //after workflow is created we redirect back to (dashbaord)/page.tsx
 }

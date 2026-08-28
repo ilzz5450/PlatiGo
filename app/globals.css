@@ -135,3 +135,36 @@
     cursor: pointer !important;
   }
 }
+
+@layer components {
+  .workflow-nav-link {
+    position: relative;
+    transform-style: preserve-3d;
+    transform: perspective(600px) translateZ(0);
+    transition:
+      transform 160ms ease,
+      box-shadow 160ms ease,
+      background-color 160ms ease;
+    will-change: transform;
+  }
+
+  .workflow-nav-link:hover {
+    transform: perspective(600px) translateZ(8px) rotateX(2deg);
+    box-shadow:
+      0 6px 12px -6px rgb(0 0 0 / 0.35),
+      0 0 0 1px rgb(255 255 255 / 0.08);
+  }
+
+  .workflow-nav-link[data-active="true"] {
+    transform: perspective(600px) translateZ(10px);
+    box-shadow:
+      0 10px 20px -8px rgb(0 0 0 / 0.45),
+      0 0 0 1px rgb(255 255 255 / 0.1),
+      inset 0 1px 0 rgb(255 255 255 / 0.12);
+  }
+
+  .workflow-nav-link:active {
+    transform: perspective(600px) translateZ(0) rotateX(1deg);
+    box-shadow: 0 2px 6px -3px rgb(0 0 0 / 0.4);
+  }
+}

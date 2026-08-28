@@ -1,6 +1,8 @@
 "use client"
 
 import { useTransition } from "react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
 import {
   SidebarMenu,
   SidebarMenuButton,
@@ -23,6 +25,7 @@ export function WorkflowNav({
   createWorkflow: (name: string) => Promise<void>
 }) {
   const [isPending, startTransition] = useTransition()
+  const pathname = usePathname()
 
   function handleCreateWorkflow() {
     const name = generateSlug()
@@ -49,16 +52,28 @@ export function WorkflowNav({
         <SidebarGroupLabel>Workflows</SidebarGroupLabel>
         <SidebarGroupContent>
           <SidebarMenu>
-            {(workflows ?? []).map((workflow) => (
-              <SidebarMenuItem key={workflow.id}>
-                <SidebarMenuButton asChild tooltip={workflow.name}>
-                  <a href="#" className="flex items-center gap-3">
-                    <Workflow className="size-4" />
-                    <span>{workflow.name}</span>
-                  </a>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
+            {(workflows ?? []).map((workflow) => {
+              const href = `/workflows/${workflow.id}`
+              const isActive = pathname === href
+
+              return (
+                <SidebarMenuItem key={workflow.id}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive}
+                    tooltip={workflow.name}
+                  >
+                    <Link
+                      href={href}
+                      className="workflow-nav-link flex items-center gap-3"
+                    >
+                      <Workflow className="size-4" />
+                      <span>{workflow.name}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )
+            })}
           </SidebarMenu>
         </SidebarGroupContent>
       </SidebarGroup>
