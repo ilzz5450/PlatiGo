@@ -1,5 +1,6 @@
 "use client"
-
+import {StepNode} from "@/features/workflows/components/step-nodes"
+import type {StepNodeType} from "@/features/workflows/Nodes/node-registry"
 import React, { useCallback, useEffect, useState } from "react"
 import {
   ReactFlow,
@@ -10,45 +11,50 @@ import {
   useEdgesState,
   addEdge,
   Connection,
+  NodeTypes,
   Edge,
   ColorMode,
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
+const nodeTypes: NodeTypes = {step: StepNode}
 
 const initialNodes = [
   {
-    id: "1",
-    type: "input",
-    data: { label: "Trigger Node" },
-    position: { x: 250, y: 50 },
-    className: "dark:bg-white dark:text-black bg-black text-white border dark:border-black/20 border-white/20 rounded-xl shadow-lg font-mono text-xs p-3 transition-colors duration-200",
+    id: "start",
+    type: "step",
+    position: { x: 0, y: 0 },
+    data: { type: "start", kind: "trigger", title: "Go", values: {} },
   },
   {
-    id: "2",
-    data: { label: "Data Ingestion" },
-    position: { x: 250, y: 160 },
-    className: "dark:bg-white dark:text-black bg-black text-white border dark:border-black/20 border-white/20 rounded-xl shadow-lg font-mono text-xs p-3 transition-colors duration-200",
-  },
-  {
-    id: "3",
-    type: "output",
-    data: { label: "Database Sync" },
-    position: { x: 250, y: 270 },
-    className: "dark:bg-white dark:text-black bg-black text-white border dark:border-black/20 border-white/20 rounded-xl shadow-lg font-mono text-xs p-3 transition-colors duration-200",
+    id: "open-url",
+    type: "step",
+    position: { x: 250, y: 0 },
+    data: {
+      type: "open-url",
+      kind: "action",
+      title: "Open URL",
+      values: { url: "https://youtube.com" },
+    },
   },
 ]
 
 const initialEdges = [
-  { id: "e1-2", source: "1", target: "2", animated: true, style: { stroke: "currentColor" }, className: "dark:text-white text-black" },
-  { id: "e2-3", source: "2", target: "3", animated: true, style: { stroke: "currentColor" }, className: "dark:text-white text-black" },
+  {
+    id: "e-start-open-url",
+    source: "start",
+    target: "open-url",
+    animated: true,
+    style: { strokeWidth: 2, strokeDasharray: "6 6", stroke: "currentColor" },
+    className: "dark:text-white/80 text-black/80",
+  },
 ]
+
 
 export function WorkflowCanvas() {
   const [nodes, , onNodesChange] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
   const [colorMode, setColorMode] = useState<ColorMode>("dark")
 
-  // Sync color mode with html root dark class
   useEffect(() => {
     const checkDark = () => {
       const isDark = document.documentElement.classList.contains("dark")
@@ -73,6 +79,7 @@ export function WorkflowCanvas() {
   return (
     <div className="size-full dark:bg-black bg-white relative transition-colors duration-200">
       <ReactFlow
+        nodeTypes={nodeTypes}
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
@@ -80,16 +87,17 @@ export function WorkflowCanvas() {
         onConnect={onConnect}
         colorMode={colorMode}
         fitView
+        proOptions={{ hideAttribution: true }}
       >
         <Background
           variant={BackgroundVariant.Dots}
-          gap={24}
-          size={1.5}
+          gap={34}
+          size={1}
           color={colorMode === "dark" ? "rgba(255, 255, 255, 0.2)" : "rgba(0, 0, 0, 0.2)"}
         />
         <Controls
           position="bottom-left"
-          className="dark:bg-black dark:border-white/20 dark:text-white bg-white border-black/20 text-black border rounded-lg p-1 shadow-xl flex gap-1 [&>button]:dark:bg-black [&>button]:dark:text-white [&>button]:bg-white [&>button]:text-black [&>button]:border-none [&>button:hover]:dark:bg-zinc-900 [&>button:hover]:bg-zinc-100"
+          className="dark:bg-black dark:border-white/20 dark:text-white bg-white border-black/20 text-black border rounded-xl p-1.5 shadow-2xl flex gap-1.5 [&>button]:dark:bg-black [&>button]:dark:text-white [&>button]:bg-white [&>button]:text-black [&>button]:border-none [&>button:hover]:dark:bg-zinc-950 [&>button:hover]:bg-zinc-100"
         />
       </ReactFlow>
     </div>
