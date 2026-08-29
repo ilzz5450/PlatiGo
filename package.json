@@ -26,6 +26,7 @@
     "@liveblocks/react-ui": "^3.24.1",
     "@neon/config": "^1.0.5",
     "@neon/env": "^1.1.5",
+    "@react-three/fiber": "^9.7.0",
     "@shadcn/react": "^0.3.0",
     "@trigger.dev/react-hooks": "^4.5.14",
     "@trigger.dev/sdk": "4.5.14",
