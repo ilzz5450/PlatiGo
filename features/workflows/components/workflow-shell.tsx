@@ -6,6 +6,7 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable"
 import { RightSidebar } from "@/features/workflows/components/right-sidebar"
+import { WorkflowCanvas } from "@/features/workflows/components/workflow-canvas"
 
 // react-resizable-panels v4 interprets numeric sizes as pixels.
 // 1rem = 16px, so rem sizes are converted to px accordingly.
@@ -23,9 +24,7 @@ export function WorkflowShell({ workflowId }: { workflowId: string }) {
           className="size-full"
         >
           <ResizablePanel minSize={18 * REM}>
-            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              Canvas
-            </div>
+            <WorkflowCanvas />
           </ResizablePanel>
           <ResizableHandle withHandle />
           <ResizablePanel defaultSize={8 * REM} minSize={6 * REM}>
