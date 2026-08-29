@@ -1,6 +1,7 @@
 "use client"
 
 import { useTransition } from "react"
+
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -49,7 +50,9 @@ export function WorkflowNav({
         </Button>
       </div>
       <SidebarGroup>
-        <SidebarGroupLabel>Workflows</SidebarGroupLabel>
+        <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">
+          Workflows
+        </SidebarGroupLabel>
         <SidebarGroupContent>
           <SidebarMenu>
             {(workflows ?? []).map((workflow) => {
@@ -68,7 +71,7 @@ export function WorkflowNav({
                       className="workflow-nav-link flex items-center gap-3"
                     >
                       <Workflow className="size-4" />
-                      <span>{workflow.name}</span>
+                      <span className="group-data-[collapsible=icon]:hidden">{workflow.name}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

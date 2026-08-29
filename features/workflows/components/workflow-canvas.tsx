@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {Panel} from "@xyflow/react"
+import {AvatarStack} from "@liveblocks/react-ui"
 
 import {
   ReactFlow,
@@ -182,6 +184,9 @@ export function WorkflowCanvas() {
             dark:[&>button:hover]:bg-zinc-950
           "
         />
+        <Panel position="top-right" className="m-4">
+          <AvatarStack />
+        </Panel>
       </ReactFlow>
     </div>
   );
