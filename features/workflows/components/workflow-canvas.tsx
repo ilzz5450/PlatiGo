@@ -1,29 +1,41 @@
-"use client"
-import {StepNode} from "@/features/workflows/components/step-nodes"
-import type {StepNodeType} from "@/features/workflows/Nodes/node-registry"
-import React, { useCallback, useEffect, useState } from "react"
+"use client";
+
+import { useEffect, useState } from "react";
+
 import {
   ReactFlow,
   Background,
   Controls,
   BackgroundVariant,
-  useNodesState,
-  useEdgesState,
-  addEdge,
-  Connection,
-  NodeTypes,
-  Edge,
-  ColorMode,
-} from "@xyflow/react"
-import "@xyflow/react/dist/style.css"
-const nodeTypes: NodeTypes = {step: StepNode}
+  type NodeTypes,
+  type ColorMode,
+} from "@xyflow/react";
 
+import { useLiveblocksFlow, Cursors } from "@liveblocks/react-flow";
+
+import { StepNode } from "@/features/workflows/components/step-nodes";
+
+import "@xyflow/react/dist/style.css";
+import "@liveblocks/react-ui/styles.css";
+import "@liveblocks/react-flow/styles.css";
+
+// Register custom React Flow node types
+const nodeTypes: NodeTypes = {
+  step: StepNode,
+};
+
+// Initial nodes shown when the workflow is first created
 const initialNodes = [
   {
     id: "start",
     type: "step",
     position: { x: 0, y: 0 },
-    data: { type: "start", kind: "trigger", title: "Go", values: {} },
+    data: {
+      type: "start",
+      kind: "trigger",
+      title: "Go",
+      values: {},
+    },
   },
   {
     id: "open-url",
@@ -33,73 +45,144 @@ const initialNodes = [
       type: "open-url",
       kind: "action",
       title: "Open URL",
-      values: { url: "https://youtube.com" },
+      values: {
+        url: "https://youtube.com",
+      },
     },
   },
-]
+];
 
+// Initial connection between workflow nodes
 const initialEdges = [
   {
     id: "e-start-open-url",
     source: "start",
     target: "open-url",
     animated: true,
-    style: { strokeWidth: 2, strokeDasharray: "6 6", stroke: "currentColor" },
+    style: {
+      strokeWidth: 2,
+      strokeDasharray: "6 6",
+      stroke: "currentColor",
+    },
     className: "dark:text-white/80 text-black/80",
   },
-]
-
+];
 
 export function WorkflowCanvas() {
-  const [nodes, , onNodesChange] = useNodesState(initialNodes)
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
-  const [colorMode, setColorMode] = useState<ColorMode>("dark")
+  // Liveblocks manages the collaborative nodes and edges
+  const {
+    nodes,
+    edges,
+    onNodesChange,
+    onEdgesChange,
+    onConnect,
+    onDelete,
+  } = useLiveblocksFlow({
+    suspense: false,
+
+    // Nodes that are present when the room has no existing nodes
+    nodes: {
+      initial: initialNodes,
+    },
+
+    // Edges that are present when the room has no existing edges
+    edges: {
+      initial: initialEdges,
+    },
+  });
+
+  // Keep React Flow's color mode synchronized with the application's
+  // Tailwind dark/light mode.
+  const [colorMode, setColorMode] = useState<ColorMode>("dark");
 
   useEffect(() => {
-    const checkDark = () => {
-      const isDark = document.documentElement.classList.contains("dark")
-      setColorMode(isDark ? "dark" : "light")
-    }
-    checkDark()
+    // Check whether the <html> element currently has the "dark" class
+    const checkDarkMode = () => {
+      const isDark = document.documentElement.classList.contains("dark");
 
-    const observer = new MutationObserver(checkDark)
+      setColorMode(isDark ? "dark" : "light");
+    };
+
+    // Check the theme when the component mounts
+    checkDarkMode();
+
+    // Watch for changes to the <html> class attribute
+    const observer = new MutationObserver(checkDarkMode);
+
     observer.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ["class"],
-    })
+    });
 
-    return () => observer.disconnect()
-  }, [])
-
-  const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge(params, eds)),
-    [setEdges]
-  )
+    // Clean up the observer when the component unmounts
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <div className="size-full dark:bg-black bg-white relative transition-colors duration-200">
+    <div className="relative size-full bg-white transition-colors duration-200 dark:bg-black">
       <ReactFlow
+        // Custom node components
         nodeTypes={nodeTypes}
-        nodes={nodes}
-        edges={edges}
+        // Collaborative nodes and edges from Liveblocks
+        nodes={nodes ?? initialNodes}
+        edges={edges ?? initialEdges}
+        // Node changes
         onNodesChange={onNodesChange}
+        // Edge changes
         onEdgesChange={onEdgesChange}
+        // Creating a new connection
         onConnect={onConnect}
+        // Deleting nodes/edges
+        onDelete={onDelete}
+        // React Flow light/dark mode
         colorMode={colorMode}
+        // Automatically fit the workflow inside the canvas
         fitView
+        // Hide React Flow branding
         proOptions={{ hideAttribution: true }}
       >
+        {/* Show other users' cursors */}
+        <Cursors />
+
+        {/* Workflow background grid */}
         <Background
           variant={BackgroundVariant.Dots}
           gap={34}
           size={1}
-          color={colorMode === "dark" ? "rgba(255, 255, 255, 0.2)" : "rgba(0, 0, 0, 0.2)"}
+          color={
+            colorMode === "dark"
+              ? "rgba(255, 255, 255, 0.2)"
+              : "rgba(0, 0, 0, 0.2)"
+          }
         />
+
+        {/* Zoom and viewport controls */}
         <Controls
           position="bottom-left"
-          className="dark:bg-black dark:border-white/20 dark:text-white bg-white border-black/20 text-black border rounded-xl p-1.5 shadow-2xl flex gap-1.5 [&>button]:dark:bg-black [&>button]:dark:text-white [&>button]:bg-white [&>button]:text-black [&>button]:border-none [&>button:hover]:dark:bg-zinc-950 [&>button:hover]:bg-zinc-100"
+          className="
+            rounded-xl
+            border
+            border-black/20
+            bg-white
+            p-1.5
+            text-black
+            shadow-2xl
+            transition-colors
+            dark:border-white/20
+            dark:bg-black
+            dark:text-white
+
+            [&>button]:border-none
+            [&>button]:bg-white
+            [&>button]:text-black
+            [&>button:hover]:bg-zinc-100
+
+            dark:[&>button]:bg-black
+            dark:[&>button]:text-white
+            dark:[&>button:hover]:bg-zinc-950
+          "
         />
       </ReactFlow>
     </div>
-  )
+  );
 }

@@ -1,5 +1,5 @@
 import { WorkflowShell } from "@/features/workflows/components/workflow-shell"
-
+import {Room} from "@/features/workflows/components/Room"
 export default async function WorkflowPage({
   params,
 }: {
@@ -8,8 +8,9 @@ export default async function WorkflowPage({
   const { id } = await params
 
   return (
-    <div className="flex min-h-screen w-full">
+    <Room roomId={id}>
       <WorkflowShell workflowId={id} />
-    </div>
+    </Room>
   )
-}
+} // creating room id matching the dynamic item rom params so that i can use live blocks as well 
+
