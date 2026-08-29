@@ -5,6 +5,7 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable"
+import { RightSidebar } from "@/features/workflows/components/right-sidebar"
 
 // react-resizable-panels v4 interprets numeric sizes as pixels.
 // 1rem = 16px, so rem sizes are converted to px accordingly.
@@ -42,9 +43,7 @@ export function WorkflowShell({ workflowId }: { workflowId: string }) {
         minSize={14 * REM}
         maxSize={36 * REM}
       >
-        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-          Inspector
-        </div>
+        <RightSidebar workflowId={workflowId} />
       </ResizablePanel>
     </ResizablePanelGroup>
   )
