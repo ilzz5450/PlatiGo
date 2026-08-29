@@ -78,7 +78,7 @@ export function WorkflowCanvas() {
     onConnect,
     onDelete,
   } = useLiveblocksFlow({
-    suspense: false,
+    suspense: true,
 
     // Nodes that are present when the room has no existing nodes
     nodes: {

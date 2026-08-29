@@ -4,6 +4,7 @@ import { ReactNode } from "react";
 import { RoomProvider, ClientSideSuspense } from "@liveblocks/react/suspense";
 import { LiveblocksProvider } from "@liveblocks/react";
 import { Loader2 } from "lucide-react";
+import {Spinner} from "@/components/ui/spinner"
 
 export function Room({
   children,
@@ -18,6 +19,7 @@ export function Room({
         <ClientSideSuspense
           fallback={
             <div className="flex size-full items-center justify-center bg-background">
+              <Spinner className="size-6 animate-spin text-muted-foreground" />
               <Loader2 className="size-6 animate-spin text-muted-foreground" />
             </div>
           }
