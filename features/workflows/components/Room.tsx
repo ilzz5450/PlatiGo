@@ -1,18 +1,28 @@
 "use client";
 
 import { ReactNode } from "react";
-import {
-  LiveblocksProvider,
-  RoomProvider,
-  ClientSideSuspense,
-} from "@liveblocks/react/suspense";
+import { RoomProvider, ClientSideSuspense } from "@liveblocks/react/suspense";
+import { LiveblocksProvider } from "@liveblocks/react";
+import { Loader2 } from "lucide-react";
 
-export function Room({ children,roomId }: { children: ReactNode; roomId: string }) {
+export function Room({
+  children,
+  roomId,
+}: {
+  children: ReactNode;
+  roomId: string;
+}) {
   return (
-    <LiveblocksProvider publicApiKey={"pk_dev_QikpsEAj4hVIw5UCxHk1j-T83j2Qu5-a4JSuyquVE6-4kS6L_bkJKO8L6zzbUWHI"}>
+    <LiveblocksProvider authEndpoint="/api/liveblocks/auth">
       <RoomProvider id={roomId}>
-        <ClientSideSuspense fallback={<div>Loading…</div>}>
-          {children}
+        <ClientSideSuspense
+          fallback={
+            <div className="flex size-full items-center justify-center bg-background">
+              <Loader2 className="size-6 animate-spin text-muted-foreground" />
+            </div>
+          }
+        >
+          {() => children}
         </ClientSideSuspense>
       </RoomProvider>
     </LiveblocksProvider>

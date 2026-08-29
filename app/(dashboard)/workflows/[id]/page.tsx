@@ -1,16 +1,49 @@
 import { WorkflowShell } from "@/features/workflows/components/workflow-shell"
-import {Room} from "@/features/workflows/components/Room"
+import { Room } from "@/features/workflows/components/Room"
+import { notFound } from "next/navigation"
+import { getWorkflow } from "@/features/workflows/data"
+import { auth } from "@clerk/nextjs/server"
+import { liveblocks } from "@/lib/liveblocks" // advange of making a reusable component 
+
 export default async function WorkflowPage({
   params,
 }: {
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
+  const { orgId } = await auth()
+  if (!orgId) {
+    notFound();
+  }
+
+  const workflowsList = await getWorkflow(orgId, id)
+  const workflow = workflowsList[0]
+
+  if (!workflow) {
+    notFound();
+  }
+
+  try {
+    await liveblocks.getOrCreateRoom(id, {
+      organizationId: orgId, // live blocks orgid shown in dashbaord , refer to route.ts under liveblocks/auth for info
+      defaultAccesses: [],
+      groupsAccesses: {
+        [orgId]: ["room:write"],
+      },
+      metadata: {
+        name: workflow.name,
+      },
+    
+    });
+  } catch (error) {
+    console.error("Failed to get or create Liveblocks room:", error);
+  }
 
   return (
     <Room roomId={id}>
       <WorkflowShell workflowId={id} />
     </Room>
   )
-} // creating room id matching the dynamic item rom params so that i can use live blocks as well 
+}
+
 
