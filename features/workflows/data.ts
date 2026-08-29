@@ -1,4 +1,4 @@
-import { desc , eq} from "drizzle-orm"
+import { and, desc, eq } from "drizzle-orm"
 import {db} from "@/lib/db"
 import {workflows} from "@/lib/db/schema"
 
@@ -15,3 +15,9 @@ export function createWorkflow(orgId: string, name: string) {
 .values({ orgId, name })
 .returning()
 }   // inserts a new workflow row for the given org and returns it
+
+export function getWorkflow(orgId: string, id: string) {
+    return db
+.select().from(workflows).where(and(eq(workflows.id, id), eq(workflows.orgId, orgId)))
+.limit(1)
+}   // returns the single workflow row matching both id and orgId
