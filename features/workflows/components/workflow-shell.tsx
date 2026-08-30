@@ -1,5 +1,6 @@
 "use client"
 
+import { ReactFlowProvider } from "@xyflow/react"
 import {
   ResizableHandle,
   ResizablePanel,
@@ -7,6 +8,7 @@ import {
 } from "@/components/ui/resizable"
 import { RightSidebar } from "@/features/workflows/components/right-sidebar"
 import { WorkflowCanvas } from "@/features/workflows/components/workflow-canvas"
+import { WorkflowFlowProvider } from "@/features/workflows/components/workflow-flow"
 
 // react-resizable-panels v4 interprets numeric sizes as pixels.
 // 1rem = 16px, so rem sizes are converted to px accordingly.
@@ -14,7 +16,9 @@ const REM = 16
 
 export function WorkflowShell({ workflowId }: { workflowId: string }) {
   return (
-    <ResizablePanelGroup
+    <ReactFlowProvider>
+      <WorkflowFlowProvider>
+        <ResizablePanelGroup
       orientation="horizontal"
       className="size-full"
     >
@@ -44,6 +48,8 @@ export function WorkflowShell({ workflowId }: { workflowId: string }) {
       >
         <RightSidebar workflowId={workflowId} />
       </ResizablePanel>
-    </ResizablePanelGroup>
+          </ResizablePanelGroup>
+        </WorkflowFlowProvider>
+      </ReactFlowProvider>
   )
 }

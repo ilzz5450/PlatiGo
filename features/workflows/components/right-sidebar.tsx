@@ -30,6 +30,7 @@ import {
   type StepNodeKind,
   type StepNodeType,
 } from "@/features/workflows/Nodes/node-registry"
+import { useWorkflowFlow } from "@/features/workflows/components/workflow-flow"
 
 
 
@@ -93,6 +94,8 @@ function FieldInput({
 }
 
 function Inspector({ node }: { node: StepNodeType | undefined }) {
+  const { updateStepNode } = useWorkflowFlow()
+
   if (!node) {
     return (
       <Section title="Edit Panel">
@@ -119,8 +122,10 @@ function Inspector({ node }: { node: StepNodeType | undefined }) {
                 field={field}
                 value={values[field.key] ?? ""}
                 onChange={(value) => {
-                 
-                  void value
+                  updateStepNode(node.id, {
+                    ...node.data,
+                    values: { ...values, [field.key]: value },
+                  })
                 }}
               />
             </div>
@@ -141,10 +146,7 @@ const definitions = Object.values(nodeRegistry)
 
 
 function Palette() {
-  const add = (type: NodeType) => {
-
-    void type
-  }
+  const { addStepNode } = useWorkflowFlow()
 
   return (
     <Section title="Your Tools">
@@ -169,7 +171,7 @@ function Palette() {
                   <Button
                     key={def.type}
                     variant="ghost"
-                    onClick={() => add(def.type as NodeType)}
+                    onClick={() => addStepNode(def.type as NodeType)}
                     className="justify-start gap-2.5 px-1.5 text-xs"
                   >
                     <NodeIcon type={def.type as NodeType} />
@@ -230,11 +232,7 @@ function RunButton() {
 
 export function RightSidebar({ workflowId }: { workflowId: string }) {
   const [tab, setTab] = useState("toolbar")
-
-
-  const selected: StepNodeType | undefined = undefined
-
-
+  const { selectedNode } = useWorkflowFlow()
 
   return (
     <ResizablePanel
@@ -267,7 +265,7 @@ export function RightSidebar({ workflowId }: { workflowId: string }) {
           <Palette />
         </TabsContent>
         <TabsContent value="editor" className="flex min-h-0 flex-col">
-          <Inspector node={selected} />
+          <Inspector node={selectedNode} />
         </TabsContent>
       </Tabs>
     </ResizablePanel>

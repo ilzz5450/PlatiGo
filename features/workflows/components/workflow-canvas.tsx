@@ -9,89 +9,25 @@ import {
   Background,
   Controls,
   BackgroundVariant,
-  type NodeTypes,
   type ColorMode,
 } from "@xyflow/react";
 
-import { useLiveblocksFlow, Cursors } from "@liveblocks/react-flow";
+import { Cursors } from "@liveblocks/react-flow";
 
-import { StepNode } from "@/features/workflows/components/step-nodes";
+import {
+  nodeTypes,
+  useWorkflowFlow,
+} from "@/features/workflows/components/workflow-flow";
 
 import "@xyflow/react/dist/style.css";
 import "@liveblocks/react-ui/styles.css";
 import "@liveblocks/react-flow/styles.css";
 
-// Register custom React Flow node types
-const nodeTypes: NodeTypes = {
-  step: StepNode,
-};
-
-// Initial nodes shown when the workflow is first created
-const initialNodes = [
-  {
-    id: "start",
-    type: "step",
-    position: { x: 0, y: 0 },
-    data: {
-      type: "start",
-      kind: "trigger",
-      title: "Go",
-      values: {},
-    },
-  },
-  {
-    id: "open-url",
-    type: "step",
-    position: { x: 250, y: 0 },
-    data: {
-      type: "open-url",
-      kind: "action",
-      title: "Open URL",
-      values: {
-        url: "https://youtube.com",
-      },
-    },
-  },
-];
-
-// Initial connection between workflow nodes
-const initialEdges = [
-  {
-    id: "e-start-open-url",
-    source: "start",
-    target: "open-url",
-    animated: true,
-    style: {
-      strokeWidth: 2,
-      strokeDasharray: "6 6",
-      stroke: "currentColor",
-    },
-    className: "dark:text-white/80 text-black/80",
-  },
-];
-
 export function WorkflowCanvas() {
-  // Liveblocks manages the collaborative nodes and edges
-  const {
-    nodes,
-    edges,
-    onNodesChange,
-    onEdgesChange,
-    onConnect,
-    onDelete,
-  } = useLiveblocksFlow({
-    suspense: true,
-
-    // Nodes that are present when the room has no existing nodes
-    nodes: {
-      initial: initialNodes,
-    },
-
-    // Edges that are present when the room has no existing edges
-    edges: {
-      initial: initialEdges,
-    },
-  });
+  // Liveblocks manages the collaborative nodes and edges, shared with the
+  // palette in the right sidebar via WorkflowFlowProvider.
+  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, onDelete } =
+    useWorkflowFlow();
 
   // Keep React Flow's color mode synchronized with the application's
   // Tailwind dark/light mode.
@@ -126,8 +62,8 @@ export function WorkflowCanvas() {
         // Custom node components
         nodeTypes={nodeTypes}
         // Collaborative nodes and edges from Liveblocks
-        nodes={nodes ?? initialNodes}
-        edges={edges ?? initialEdges}
+        nodes={nodes ?? []}
+        edges={edges ?? []}
         // Node changes
         onNodesChange={onNodesChange}
         // Edge changes

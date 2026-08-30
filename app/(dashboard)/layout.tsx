@@ -2,15 +2,22 @@ import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/s
 import { AppSidebar } from "@/components/app-sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { OrganizationSwitcher, UserButton } from "@clerk/nextjs"
+import { cookies } from "next/headers"
 
-export default function DashboardLayout({
+const SIDEBAR_COOKIE_NAME = "sidebar_state"
+
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const cookieStore = await cookies()
+  const sidebarCookie = cookieStore.get(SIDEBAR_COOKIE_NAME)
+  const defaultOpen = sidebarCookie?.value !== "false"
+
   return (
     <TooltipProvider delayDuration={0}>
-      <SidebarProvider>
+      <SidebarProvider defaultOpen={defaultOpen}>
         <AppSidebar />
         <SidebarInset className="flex flex-col flex-1 min-w-0 bg-background">
           <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-2 md:hidden">

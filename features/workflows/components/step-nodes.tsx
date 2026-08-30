@@ -8,12 +8,16 @@ import {
 import { cn } from "@/lib/utils"
 
 function StepNodeComponent({ data, selected }: NodeProps<StepNodeType>) {
-  const { type, kind, title } = data
+  const { type, kind, title, values } = data
   const def = nodeRegistry[type]
   const Icon = def.icon
 
   // A trigger starts the flow and takes no input, so it has no target handle.
   const hasTarget = kind !== "trigger"
+
+  const visibleValues = Object.entries(values).filter(
+    ([, value]) => value && value.trim() !== ""
+  )
 
   return (
     <div
@@ -40,7 +44,14 @@ function StepNodeComponent({ data, selected }: NodeProps<StepNodeType>) {
         >
           <Icon className="size-4" />
         </div>
-        <span className="text-sm font-semibold">{title}</span>
+        <div className="min-w-0">
+          <span className="block text-sm font-semibold">{title}</span>
+          {visibleValues.length > 0 && (
+            <span className="block max-w-full truncate text-xs text-muted-foreground">
+              {visibleValues[0][1]}
+            </span>
+          )}
+        </div>
       </div>
 
       <Handle

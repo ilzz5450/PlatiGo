@@ -1,5 +1,5 @@
 import type { Node } from "@xyflow/react"
-import { Play, MousePointerClick, type LucideIcon } from "lucide-react"
+import { Play, ExternalLink, type LucideIcon } from "lucide-react"
 
 export type StepNodeKind = "trigger" | "action"
 
@@ -33,7 +33,7 @@ export const nodeRegistry = {
     type: "open-url",
     kind: "action",
     label: "Open URL",
-    icon: MousePointerClick,
+    icon: ExternalLink,
     accent: "bg-yellow-500 text-white",
     fields: [{ key: "url", label: "URL", placeholder: "https://youtube.com" }],
   },
