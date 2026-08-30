@@ -51,3 +51,8 @@ export type StepNodeData = {
 }
 
 export type StepNodeType = Node<StepNodeData, "step">
+
+
+export type ActionNodeType = {
+  [K in NodeType]:(typeof nodeRegistry)[K]["kind"] extends "action" ? K:never
+}[NodeType]
