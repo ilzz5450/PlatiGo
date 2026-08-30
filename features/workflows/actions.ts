@@ -1,50 +1,42 @@
 "use server"
 
 import { auth } from "@clerk/nextjs/server"
+import { deleteWorkflow, createWorkflow } from "@/features/workflows/data"
+import { liveblocks } from "@/lib/liveblocks"
 import { revalidatePath } from "next/cache"
-import { redirect } from "next/navigation"
-import { tasks, auth as triggerAuth } from "@trigger.dev/sdk"
-import type { testWorkflowTask } from "@/trigger/example"
 
-import { createWorkflow } from "@/features/workflows/data"
-
+// Server action to create a workflow
 export async function createWorkflowAction(name: string) {
   const { orgId } = await auth()
-
   if (!orgId) {
-    throw new Error("No active organization found")
+    throw new Error("Unauthorized")
   }
-
-  const [workflow] = await createWorkflow(orgId, name)
-
-  if (!workflow) {
-    throw new Error("Failed to create workflow")
-  }
-
-  revalidatePath("/", "layout")
-
-  redirect(`/workflows/${workflow.id}`)
+  await createWorkflow(orgId, name)
+  revalidatePath("/")
 }
 
-export async function runWorkflowAction(workflowId: string) {
+// Server action to delete a workflow from the database and its corresponding Liveblocks room.
+export async function deleteWorkflowAction(workflowId: string) {
   const { orgId } = await auth()
-
   if (!orgId) {
-    throw new Error("No active organization found")
+    throw new Error("Unauthorized: No organization selected")
+  } // logic for deleting the workflwo form the server side into the neondb postgress 
+
+  // Verify ownership and delete from PostgreSQL database scoped to the current organization via data.ts
+  const deleted = await deleteWorkflow(orgId, workflowId)
+
+  if (deleted.length === 0) {
+    throw new Error("Workflow not found or unauthorized")
   }
 
-  const handle = await tasks.trigger<typeof testWorkflowTask>("test-workflow", {
-    workflowId,
-  })
+  // Clean up the Liveblocks room using the workflow id as the room id
+  try {
+    await liveblocks.deleteRoom(workflowId)
+  } catch (error) {
+    // Room might already be deleted or not exist yet, safe to ignore or log
+    console.error("Failed to delete Liveblocks room:", error)
+  }
 
-  // Mint a public access token scoped specifically to this run so the frontend can subscribe via useRealtimeRun
-  const publicAccessToken = await triggerAuth.createPublicToken({
-    scopes: {
-      read: {
-        runs: [handle.id],
-      },
-    },
-  })
-
-  return { runId: handle.id, publicAccessToken }
+  revalidatePath("/")
+  return { success: true }
 }

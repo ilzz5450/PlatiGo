@@ -1,6 +1,9 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { deleteWorkflowAction } from "@/features/workflows/actions"
+import { toast } from "sonner"
 import { MoreHorizontal, Play, Trash2 } from "lucide-react"
 
 import {
@@ -17,6 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { ResizablePanel } from "@/components/ui/resizable"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -72,7 +76,7 @@ function Section({
 }
 
 
-// A single editor field for a node property.
+// A single editor field component that dynamically renders either a single-line input or a multi-line text area based on field.multiline.
 function FieldInput({
   field,
   value,
@@ -82,7 +86,19 @@ function FieldInput({
   value: string
   onChange: (value: string) => void
 }) {
- 
+  // If multiline is enabled, render a textarea component; otherwise, use the standard single-line Input.
+  if (field.multiline) {
+    return (
+      <Textarea
+        id={field.key}
+        value={value}
+        placeholder={field.placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        className="min-h-20 resize-y text-xs"
+      />
+    )
+  }
+
   return (
     <Input
       id={field.key}
@@ -187,7 +203,25 @@ function Palette() {
 }
 
 
-function ActionsMenu() {
+function ActionsMenu({ workflowId }: { workflowId: string }) {
+  const router = useRouter()
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const handleDelete = async () => {
+    if (isDeleting) return
+    setIsDeleting(true)
+    try {
+      await deleteWorkflowAction(workflowId)
+      toast.success("Workflow deleted successfully")
+      router.push("/")
+      router.refresh()
+    } catch (error) {
+      console.error("Failed to delete workflow:", error)
+      toast.error("Failed to delete workflow")
+      setIsDeleting(false)
+    }
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -199,12 +233,14 @@ function ActionsMenu() {
         <DropdownMenuItem
           variant="destructive"
           className="text-xs [&_svg:not([class*='size-'])]:size-3.5"
-          onSelect={() => {
-         
+          disabled={isDeleting}
+          onSelect={(e) => {
+            e.preventDefault()
+            void handleDelete()
           }}
         >
           <Trash2 />
-          Delete workflow
+          {isDeleting ? "Deleting..." : "Delete workflow"}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -244,7 +280,7 @@ export function RightSidebar({ workflowId }: { workflowId: string }) {
     >
       <Tabs value={tab} onValueChange={setTab} className="size-full gap-0">
         <div className="flex items-center justify-between border-b border-border p-2">
-          <ActionsMenu />
+          <ActionsMenu workflowId={workflowId} />
           <RunButton />
         </div>
         <TabsList className="m-2 w-fit bg-background">

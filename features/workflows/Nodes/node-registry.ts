@@ -3,11 +3,12 @@ import { Play, ExternalLink, type LucideIcon } from "lucide-react"
 
 export type StepNodeKind = "trigger" | "action"
 
-// One editable field on a node, rendered as an input in the inspector later.
+// One editable field on a node, rendered as an input or textarea in the inspector.
 export type NodeField = {
   key: string
   label: string
   placeholder?: string
+  multiline?: boolean // Flag allowing fields to opt into multi-line textarea rendering
 }
 
 // A node type's manifest entry. Add a node by adding an entry to nodeRegistry.
