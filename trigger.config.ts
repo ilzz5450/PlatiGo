@@ -3,6 +3,11 @@ import { defineConfig } from "@trigger.dev/sdk";
 export default defineConfig({
   project: "proj_pfexlfdptflxwdyvbayw",
   dirs: ["./trigger", "./features/workflows/tasks"],
+  build: {
+    // Stagehand loads its Chrome extension ZIP from its installed package.
+    // Keep it external so Trigger.dev's bundled worker retains that asset.
+    external: ["@browserbasehq/stagehand"],
+  },
   retries: {
     enabledInDev: false,
     default: {
