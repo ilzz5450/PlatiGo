@@ -38,6 +38,7 @@ import {
   type StepNodeType,
 } from "@/features/workflows/Nodes/node-registry"
 import { useWorkflowFlow } from "@/features/workflows/components/workflow-flow"
+import { useUpstreamConnections } from "@/features/workflows/hooks/use-upstream-connections"
 
 
 
@@ -84,10 +85,12 @@ function FieldInput({
   field,
   value,
   onChange,
+  onFocus,
 }: {
   field: NodeField
   value: string
   onChange: (value: string) => void
+  onFocus: () => void
 }) {
   // If multiline is enabled, render a textarea component; otherwise, use the standard single-line Input.
   if (field.multiline) {
@@ -96,6 +99,7 @@ function FieldInput({
         id={field.key}
         value={value}
         placeholder={field.placeholder}
+        onFocus={onFocus}
         onChange={(e) => onChange(e.target.value)}
         className="min-h-20 resize-y text-xs"
       />
@@ -107,6 +111,7 @@ function FieldInput({
       id={field.key}
       value={value}
       placeholder={field.placeholder}
+      onFocus={onFocus}
       onChange={(e) => onChange(e.target.value)}
     />
   )
@@ -114,6 +119,8 @@ function FieldInput({
 
 function Inspector({ node }: { node: StepNodeType | undefined }) {
   const { updateStepNode } = useWorkflowFlow()
+  const connections = useUpstreamConnections(node)
+  const [lastEditedField, setLastEditedField] = useState<string>()
 
   if (!node) {
     return (
@@ -125,6 +132,21 @@ function Inspector({ node }: { node: StepNodeType | undefined }) {
 
   const { type, title, values } = node.data
   const def: NodeDefinition = nodeRegistry[type]
+  const targetField = def.fields.some((field) => field.key === lastEditedField)
+    ? lastEditedField
+    : def.fields[0]?.key
+
+  const insertConnectionToken = (token: string) => {
+    if (!targetField) return
+
+    updateStepNode(node.id, {
+      ...node.data,
+      values: {
+        ...values,
+        [targetField]: `${values[targetField] ?? ""}${token}`,
+      },
+    })
+  }
 
   return (
     <Section title={title} icon={<NodeIcon type={type} />}>
@@ -140,7 +162,9 @@ function Inspector({ node }: { node: StepNodeType | undefined }) {
               <FieldInput
                 field={field}
                 value={values[field.key] ?? ""}
+                onFocus={() => setLastEditedField(field.key)}
                 onChange={(value) => {
+                  setLastEditedField(field.key)
                   updateStepNode(node.id, {
                     ...node.data,
                     values: { ...values, [field.key]: value },
@@ -149,6 +173,25 @@ function Inspector({ node }: { node: StepNodeType | undefined }) {
               />
             </div>
           ))
+        )}
+        {connections.length > 0 && (
+          <div className="flex flex-col gap-1.5 border-t pt-3">
+            <Label className="text-xs">Connections</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {connections.map((connection) => (
+                <button
+                  key={connection.token}
+                  type="button"
+                  title={connection.token}
+                  onClick={() => insertConnectionToken(connection.token)}
+                  className="flex items-center gap-1.5 rounded-full border bg-muted/50 px-2 py-1 text-xs transition-colors hover:bg-muted"
+                >
+                  <NodeIcon type={connection.nodeType} className="size-4" />
+                  {connection.label}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
       </div>
     </Section>

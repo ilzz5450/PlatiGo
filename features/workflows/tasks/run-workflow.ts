@@ -7,6 +7,7 @@ import {
 } from "@browserbasehq/stagehand"
 
 import { getWorkflow } from "@/features/workflows/data"
+import { interpolate, type NodeOutputs } from "@/features/workflows/lib/interpolate"
 import { nodeExecutors } from "@/features/workflows/Nodes/node-exe"
 
 function getErrorDetails(error: unknown): Record<string, string | undefined> {
@@ -75,6 +76,7 @@ export const runWorkflowTask = task({
 
     let browser: StagehandBrowser | undefined
     let stagehand: Stagehand | undefined
+    const nodeOutputs: NodeOutputs = {}
 
     const getStagehand = async (): Promise<Stagehand> => {
       if (stagehand) {
@@ -123,8 +125,15 @@ export const runWorkflowTask = task({
           const executor = nodeExecutors[node.data.type]
 
           if (executor) {
-            await executor({
-              values: node.data.values ?? {},
+            const values = Object.fromEntries(
+              Object.entries(node.data.values ?? {}).map(([field, value]) => [
+                field,
+                interpolate({ text: value, outputs: nodeOutputs }),
+              ])
+            )
+
+            nodeOutputs[node.id] = await executor({
+              values,
               getStagehand,
             })
           }
