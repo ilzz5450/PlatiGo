@@ -1,13 +1,21 @@
 import { memo } from "react"
-import { Handle, Position, type NodeProps } from "@xyflow/react"
+import { Trash2 } from "lucide-react"
+import { Handle, Position, type NodeProps, useReactFlow } from "@xyflow/react"
 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   nodeRegistry,
   type StepNodeType,
 } from "@/features/workflows/Nodes/node-registry"
 import { cn } from "@/lib/utils"
 
-function StepNodeComponent({ data, selected }: NodeProps<StepNodeType>) {
+function StepNodeComponent({ id, data, selected }: NodeProps<StepNodeType>) {
+  const { deleteElements } = useReactFlow()
   const { type, kind, title, values } = data
   const def = nodeRegistry[type]
   const Icon = def.icon
@@ -52,6 +60,27 @@ function StepNodeComponent({ data, selected }: NodeProps<StepNodeType>) {
             </span>
           )}
         </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label="Node actions"
+              title="Node actions"
+              className="nodrag nopan ml-auto flex size-6 shrink-0 items-center justify-center rounded-sm text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              variant="destructive"
+              onSelect={() => void deleteElements({ nodes: [{ id }] })}
+            >
+              <Trash2 />
+              Remove node
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <Handle

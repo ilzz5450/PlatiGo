@@ -2,9 +2,12 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { deleteWorkflowAction } from "@/features/workflows/actions"
+import { deleteWorkflowAction, runWorkflowAction } from "@/features/workflows/actions"
 import { toast } from "sonner"
 import { MoreHorizontal, Play, Trash2 } from "lucide-react"
+import { validateGraph } from "@/features/workflows/lib/graph-validation"
+import { useReactFlow } from "@xyflow/react"
+
 
 import {
   Accordion,
@@ -247,19 +250,48 @@ function ActionsMenu({ workflowId }: { workflowId: string }) {
   )
 }
 
-// starts of a Go  of the current workflow.
-function RunButton() {
+// starts of a Go of the current workflow.
+function RunButton({ workflowId }: { workflowId: string }) {
+  const { getNodes, getEdges } = useReactFlow<StepNodeType>()
+  const [isRunning, setIsRunning] = useState(false)
+
+  const handleRun = async () => {
+    if (isRunning) return
+    setIsRunning(true)
+    try {
+      const nodes = getNodes()
+      const edges = getEdges()
+      const graph = { nodes, edges }
+
+      const errors = validateGraph(graph)
+      if (errors.length > 0) {
+        toast.error("Cannot run workflow", {
+          description: errors[0],
+        })
+        setIsRunning(false)
+        return
+      }
+
+      await runWorkflowAction({ id: workflowId, graph })
+      toast.success("Workflow triggered successfully on Trigger.dev!")
+    } catch (error: any) {
+      console.error("Failed to run workflow:", error)
+      toast.error(error?.message || "Failed to run workflow")
+    } finally {
+      setIsRunning(false)
+    }
+  }
+
   return (
     <Button
       size="sm"
       variant="secondary"
       className="flow-gpo-3d"
-      onClick={() => {
-      
-      }}
+      disabled={isRunning}
+      onClick={() => void handleRun()}
     >
-      <Play fill="primary" />
-      Run
+      <Play fill="currentColor" />
+      {isRunning ? "Running..." : "Run"}
     </Button>
   )
 }
@@ -281,7 +313,7 @@ export function RightSidebar({ workflowId }: { workflowId: string }) {
       <Tabs value={tab} onValueChange={setTab} className="size-full gap-0">
         <div className="flex items-center justify-between border-b border-border p-2">
           <ActionsMenu workflowId={workflowId} />
-          <RunButton />
+          <RunButton workflowId={workflowId} />
         </div>
         <TabsList className="m-2 w-fit bg-background">
           <TabsTrigger

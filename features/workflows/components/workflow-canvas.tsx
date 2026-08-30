@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback } from "react";
 import { useEffect, useState } from "react";
 import {Panel} from "@xyflow/react"
 import {AvatarStack} from "@liveblocks/react-ui"
@@ -10,6 +11,7 @@ import {
   Controls,
   BackgroundVariant,
   type ColorMode,
+  type Node,
 } from "@xyflow/react";
 
 import { Cursors } from "@liveblocks/react-flow";

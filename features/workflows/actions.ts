@@ -1,9 +1,12 @@
 "use server"
 
 import { auth } from "@clerk/nextjs/server"
-import { deleteWorkflow, createWorkflow } from "@/features/workflows/data"
+import { deleteWorkflow, createWorkflow, saveWorkflowGraph } from "@/features/workflows/data"
 import { liveblocks } from "@/lib/liveblocks"
 import { revalidatePath } from "next/cache"
+import type { WorkflowGraph } from "@/lib/db/schema"
+import { tasks } from "@trigger.dev/sdk/v3"
+import type { testWorkflowTask } from "@/trigger/example"
 
 // Server action to create a workflow
 export async function createWorkflowAction(name: string) {
@@ -39,4 +42,26 @@ export async function deleteWorkflowAction(workflowId: string) {
 
   revalidatePath("/")
   return { success: true }
+}
+
+// server action to trigger running a workflow via Trigger.dev
+export async function runWorkflowAction({
+  id,
+  graph,
+}: {
+  id: string
+  graph: WorkflowGraph
+}) {
+  const { orgId } = await auth()
+  if (!orgId) {
+    throw new Error("Unauthorized: No organization selected")
+  }
+
+  await saveWorkflowGraph({ orgId, id, graph })
+
+  const handle = await tasks.trigger<typeof testWorkflowTask>("test-workflow", {
+    workflowId: id,
+  })
+
+  return handle
 }
