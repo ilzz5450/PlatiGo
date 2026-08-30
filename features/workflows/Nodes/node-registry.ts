@@ -24,7 +24,7 @@ export const nodeRegistry = {
   start: {
     type: "start",
     kind: "trigger",
-    label: "Start",
+    label: "Go",
     icon: Play,
     accent: "bg-green-500 text-white",
     fields: [],

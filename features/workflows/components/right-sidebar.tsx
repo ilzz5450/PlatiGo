@@ -1,118 +1,275 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState } from "react"
+import { MoreHorizontal, Play, Trash2 } from "lucide-react"
+
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
-import { PlayIcon } from "lucide-react"
-import { useRealtimeRun } from "@trigger.dev/react-hooks"
-import { runWorkflowAction } from "@/features/workflows/actions"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { ResizablePanel } from "@/components/ui/resizable"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { cn } from "@/lib/utils"
 
-function RunStatusDisplay({
-  runId,
-  accessToken,
-}: {
-  runId: string
-  accessToken: string
-}) {
-  const { run, error } = useRealtimeRun(runId, {
-    accessToken,
-    skipColumns: ["payload", "output"],
-  })
+import {
+  nodeRegistry,
+  type NodeDefinition,
+  type NodeField,
+  type NodeType,
+  type StepNodeKind,
+  type StepNodeType,
+} from "@/features/workflows/Nodes/node-registry"
 
-  if (error) {
-    return (
-      <div className="w-full rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
-        Error: {error.message}
-      </div>
-    )
-  }
 
-  if (!run) {
-    return (
-      <div className="w-full rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground animate-pulse flex items-center justify-between">
-        <span>Connecting to run...</span>
-      </div>
-    )
-  }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "COMPLETED":
-        return "bg-emerald-500/10 text-emerald-500 border-emerald-500/30"
-      case "FAILED":
-      case "CRASHED":
-      case "TIMED_OUT":
-        return "bg-destructive/10 text-destructive border-destructive/30"
-      case "EXECUTING":
-      case "QUEUED":
-        return "bg-primary/10 text-primary border-primary/30 animate-pulse"
-      default:
-        return "bg-muted text-muted-foreground border-border"
-    }
-  }
-
+function NodeIcon({ type, className }: { type: NodeType; className?: string }) {
+  const def = nodeRegistry[type]
+  const Icon = def.icon
   return (
-    <div className="w-full rounded-md border border-border bg-card p-3 text-xs space-y-2">
-      <div className="flex items-center justify-between">
-        <span className="font-mono text-muted-foreground text-[10px]">
-          {run.id.slice(0, 12)}...
-        </span>
-        <span
-          className={`px-2 py-0.5 rounded-full border text-[10px] font-medium uppercase tracking-wider ${getStatusColor(
-            run.status
-          )}`}
-        >
-          {run.status}
-        </span>
+    <span
+      className={cn(
+        "flex size-6 shrink-0 items-center justify-center rounded-md",
+        def.accent,
+        className
+      )}
+    >
+      <Icon className="size-3.5" />
+    </span>
+  )
+}
+
+// A titled, scrollable panel. Each tab renders its content inside one. for the workflow 
+function Section({
+  title,
+  icon,
+  children,
+}: {
+  title: string
+  icon?: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flow-panel-3d flex items-center gap-2 border-y border-border bg-card px-3 py-1.5 text-sm font-semibold">
+        {icon}
+        {title}
       </div>
-      <div className="text-muted-foreground text-[11px] truncate">
-        Task: <span className="text-foreground font-medium">{run.taskIdentifier}</span>
-      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
     </div>
   )
 }
 
-export function RightSidebar({ workflowId }: { workflowId: string }) {
-  const [isPending, startTransition] = useTransition()
-  const [activeRun, setActiveRun] = useState<{
-    runId: string
-    publicAccessToken: string
-  } | null>(null)
 
-  function handleRun() {
-    startTransition(async () => {
-      try {
-        const result = await runWorkflowAction(workflowId)
-        setActiveRun({
-          runId: result.runId,
-          publicAccessToken: result.publicAccessToken,
-        })
-      } catch (error) {
-        console.error("Failed to run workflow:", error)
-      }
-    })
+// A single editor field for a node property.
+function FieldInput({
+  field,
+  value,
+  onChange,
+}: {
+  field: NodeField
+  value: string
+  onChange: (value: string) => void
+}) {
+ 
+  return (
+    <Input
+      id={field.key}
+      value={value}
+      placeholder={field.placeholder}
+      onChange={(e) => onChange(e.target.value)}
+    />
+  )
+}
+
+function Inspector({ node }: { node: StepNodeType | undefined }) {
+  if (!node) {
+    return (
+      <Section title="Edit Panel">
+        <p className="p-3 text-sm text-muted-foreground">No node selected</p>
+      </Section>
+    )
+  }
+
+  const { type, title, values } = node.data
+  const def: NodeDefinition = nodeRegistry[type]
+
+  return (
+    <Section title={title} icon={<NodeIcon type={type} />}>
+      <div className="flex flex-col gap-3 p-3">
+        {def.fields.length === 0 ? (
+          <p className="text-xs text-muted-foreground">No properties</p>
+        ) : (
+          def.fields.map((field) => (
+            <div key={field.key} className="flex flex-col gap-1.5">
+              <Label htmlFor={field.key} className="text-xs">
+                {field.label}
+              </Label>
+              <FieldInput
+                field={field}
+                value={values[field.key] ?? ""}
+                onChange={(value) => {
+                 
+                  void value
+                }}
+              />
+            </div>
+          ))
+        )}
+      </div>
+    </Section>
+  )
+}
+
+const sections: { kind: StepNodeKind; label: string }[] = [
+  { kind: "trigger", label: "Triggers" },
+  { kind: "action", label: "PlatiGo Actions" },
+]
+
+//definitions 
+const definitions = Object.values(nodeRegistry)
+
+
+function Palette() {
+  const add = (type: NodeType) => {
+
+    void type
   }
 
   return (
-    <div className="flex h-full flex-col justify-between p-4">
-      <div className="flex-1 flex flex-col items-center justify-center">
-        <div className="w-full space-y-4">
-          <Button
-            className="w-full gap-2"
-            onClick={handleRun}
-            disabled={isPending}
+    <Section title="Your Tools">
+      <Accordion
+        type="multiple"
+        defaultValue={sections.map((s) => s.kind)}
+        className="px-3 py-2"
+      >
+        {sections.map((section) => (
+          <AccordionItem
+            key={section.kind}
+            value={section.kind}
+            className="not-last:border-b-0"
           >
-            <PlayIcon className="size-4" />
-            {isPending ? "Triggering..." : "Run"}
-          </Button>
+            <AccordionTrigger className="flow-panel-3d py-2 text-xs font-medium text-muted-foreground hover:no-underline">
+              {section.label}
+            </AccordionTrigger>
+            <AccordionContent className="flex flex-col gap-0.5">
+              {definitions
+                .filter((def) => def.kind === section.kind)
+                .map((def) => (
+                  <Button
+                    key={def.type}
+                    variant="ghost"
+                    onClick={() => add(def.type as NodeType)}
+                    className="justify-start gap-2.5 px-1.5 text-xs"
+                  >
+                    <NodeIcon type={def.type as NodeType} />
+                    {def.label}
+                  </Button>
+                ))}
+            </AccordionContent>
+          </AccordionItem>
+        ))}
+      </Accordion>
+    </Section>
+  )
+}
 
-          {activeRun && (
-            <RunStatusDisplay
-              runId={activeRun.runId}
-              accessToken={activeRun.publicAccessToken}
-            />
-          )}
+
+function ActionsMenu() {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button size="icon" variant="ghost">
+          <MoreHorizontal />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="min-w-48">
+        <DropdownMenuItem
+          variant="destructive"
+          className="text-xs [&_svg:not([class*='size-'])]:size-3.5"
+          onSelect={() => {
+         
+          }}
+        >
+          <Trash2 />
+          Delete workflow
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+// starts of a Go  of the current workflow.
+function RunButton() {
+  return (
+    <Button
+      size="sm"
+      variant="secondary"
+      className="flow-gpo-3d"
+      onClick={() => {
+      
+      }}
+    >
+      <Play fill="primary" />
+      Run
+    </Button>
+  )
+}
+
+
+
+export function RightSidebar({ workflowId }: { workflowId: string }) {
+  const [tab, setTab] = useState("toolbar")
+
+
+  const selected: StepNodeType | undefined = undefined
+
+
+
+  return (
+    <ResizablePanel
+      className="bg-background"
+      defaultSize="16rem"
+      minSize="14rem"
+      maxSize="36rem"
+      groupResizeBehavior="preserve-pixel-size"
+    >
+      <Tabs value={tab} onValueChange={setTab} className="size-full gap-0">
+        <div className="flex items-center justify-between border-b border-border p-2">
+          <ActionsMenu />
+          <RunButton />
         </div>
-      </div>
-    </div>
+        <TabsList className="m-2 w-fit bg-background">
+          <TabsTrigger
+            value="toolbar"
+            className="flow-panel-3d flex-none rounded-sm data-active:bg-accent! data-active:text-accent-foreground! data-active:shadow-none! dark:data-active:border-transparent!"
+          >
+            Your Tools
+          </TabsTrigger>
+          <TabsTrigger
+            value="editor"
+            className="flow-panel-3d flex-none rounded-sm data-active:bg-accent! data-active:text-accent-foreground! data-active:shadow-none! dark:data-active:border-transparent!"
+          >
+            Edit Panel
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="toolbar" className="flex min-h-0 flex-col">
+          <Palette />
+        </TabsContent>
+        <TabsContent value="editor" className="flex min-h-0 flex-col">
+          <Inspector node={selected} />
+        </TabsContent>
+      </Tabs>
+    </ResizablePanel>
   )
 }

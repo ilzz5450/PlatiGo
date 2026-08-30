@@ -193,4 +193,47 @@
   .react-flow__edge-path {
     stroke-width: 2px;
   }
+
+  /* 3D Panel Effects — right sidebar (tabs, sections, action buttons) */
+  .flow-panel-3d {
+    transform-style: preserve-3d;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow:
+      0 6px 18px -8px rgba(0, 0, 0, 0.45),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+
+  .dark .flow-panel-3d {
+    box-shadow:
+      0 8px 20px -10px rgba(0, 0, 0, 0.9),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+
+  .flow-panel-3d:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      0 12px 26px -10px rgba(0, 0, 0, 0.6),
+      inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  }
+
+  .flow-gpo-3d {
+    transform-style: preserve-3d;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow:
+      0 8px 22px -8px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+
+  .dark .flow-gpo-3d {
+    box-shadow:
+      0 10px 24px -10px rgba(0, 0, 0, 0.9),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+
+  .flow-gpo-3d:hover {
+    transform: translateY(-2px) perspective(400px) rotateX(1deg);
+    box-shadow:
+      0 14px 30px -10px rgba(0, 0, 0, 0.7),
+      inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  }
 }
