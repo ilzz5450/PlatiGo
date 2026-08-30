@@ -5,8 +5,8 @@ import { deleteWorkflow, createWorkflow, saveWorkflowGraph } from "@/features/wo
 import { liveblocks } from "@/lib/liveblocks"
 import { revalidatePath } from "next/cache"
 import type { WorkflowGraph } from "@/lib/db/schema"
-import { tasks } from "@trigger.dev/sdk/v3"
-import type { testWorkflowTask } from "@/trigger/example"
+import { tasks } from "@trigger.dev/sdk"
+import type { runWorkflowTask } from "@/features/workflows/tasks/run-workflow"
 
 // Server action to create a workflow
 export async function createWorkflowAction(name: string) {
@@ -59,8 +59,11 @@ export async function runWorkflowAction({
 
   await saveWorkflowGraph({ orgId, id, graph })
 
-  const handle = await tasks.trigger<typeof testWorkflowTask>("test-workflow", {
+  const handle = await tasks.trigger<typeof runWorkflowTask>("run-workflow", {
     workflowId: id,
+    orgId,
+  }, {
+    tags: [`workflow:${id}`],
   })
 
   return handle

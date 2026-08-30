@@ -2,7 +2,7 @@ import { defineConfig } from "@trigger.dev/sdk";
 
 export default defineConfig({
   project: "proj_pfexlfdptflxwdyvbayw",
-  dirs: ["./trigger"],
+  dirs: ["./trigger", "./features/workflows/tasks"],
   retries: {
     enabledInDev: false,
     default: {
