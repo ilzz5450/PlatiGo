@@ -33,7 +33,11 @@ export function listWorkflows(orgId: string) {
 export function createWorkflow(orgId: string, name: string) {
     return db
 .insert(workflows)
-.values({ orgId, name })
+.values({ 
+    orgId, 
+    name,
+    graph: { nodes: [], edges: [] } 
+})
 .returning()
 }   // inserts a new workflow row for the given org and returns it
 

@@ -1,4 +1,4 @@
-import {toposort} from "toposort"
+import toposort from "toposort"
 import type {WorkflowGraph} from "@/lib/db/schema"
 
 
