@@ -1,6 +1,12 @@
 import { memo } from "react"
 import { Trash2 } from "lucide-react"
-import { Handle, Position, type NodeProps, useReactFlow } from "@xyflow/react"
+import {
+  Handle,
+  Position,
+  useStore,
+  type NodeProps,
+  useReactFlow,
+} from "@xyflow/react"
 
 import {
   DropdownMenu,
@@ -14,8 +20,35 @@ import {
 } from "@/features/workflows/Nodes/node-registry"
 import { cn } from "@/lib/utils"
 
+// Resolve a `{{ nodeId.path }}` placeholder against the live graph and render a
+// human-friendly value on the node (e.g. show the referenced node's URL or
+// title instead of the raw placeholder text). Unknown references fall back to
+// the raw text.
+function resolveReference(
+  text: string,
+  nodes: StepNodeType[]
+): string {
+  return text.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (_match, expr) => {
+    const [rawId, ...pathParts] = expr.trim().split(".")
+    const node = nodes.find((n) => n.id === rawId)
+
+    if (!node) return ""
+
+    const path = pathParts.join(".")
+
+    if (path === "title") {
+      return node.data.title
+    }
+
+    // Any other output path maps to that field's stored value if present.
+    const value = node.data.values?.[path]
+    return typeof value === "string" ? value : ""
+  })
+}
+
 function StepNodeComponent({ id, data, selected }: NodeProps<StepNodeType>) {
   const { deleteElements } = useReactFlow()
+  const nodes = useStore((s) => s.nodes) as StepNodeType[]
   const { type, kind, title, values } = data
   const def = nodeRegistry[type]
   const Icon = def.icon
@@ -23,9 +56,9 @@ function StepNodeComponent({ id, data, selected }: NodeProps<StepNodeType>) {
   // A trigger starts the flow and takes no input, so it has no target handle.
   const hasTarget = kind !== "trigger"
 
-  const visibleValues = Object.entries(values).filter(
-    ([, value]) => value && value.trim() !== ""
-  )
+  const visibleValues = Object.entries(values)
+    .filter(([, value]) => value && value.trim() !== "")
+    .map(([key, value]) => [key, resolveReference(value, nodes)] as const)
 
   return (
     <div

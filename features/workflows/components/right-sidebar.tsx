@@ -119,7 +119,7 @@ function FieldInput({
 
 function Inspector({ node }: { node: StepNodeType | undefined }) {
   const { updateStepNode } = useWorkflowFlow()
-  const connections = useUpstreamConnections(node)
+  const connections = useUpstreamConnections()
   const [lastEditedField, setLastEditedField] = useState<string>()
 
   if (!node) {
