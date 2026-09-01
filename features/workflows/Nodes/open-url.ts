@@ -54,5 +54,9 @@ export async function openUrl({
     // Title reads can throw on some frames; the URL is the useful output.
   }
 
-  return { url: page.url(), title }
+  // If navigation landed but page.url() reports empty (transport-retry
+  // salts), fall back to the resolved URL we actually navigated to so
+  // downstream `{{ id.url }}` references never see "".
+  const finalUrl = page.url()
+  return { url: finalUrl || trimmed, title }
 }
