@@ -1,5 +1,5 @@
 import type { Node } from "@xyflow/react"
-import { Play, ExternalLink, type LucideIcon } from "lucide-react"
+import { Play, ExternalLink, MousePointerClick, type LucideIcon } from "lucide-react"
 
 export type StepNodeKind = "trigger" | "action"
 
@@ -46,10 +46,29 @@ export const nodeRegistry = {
     fields: [{ key: "url", label: "URL", placeholder: "https://youtube.com" }],
     outputs: [{ path: "url", label: "URL" }, { path: "title", label: "Title" }],
   },
+  act: {
+    type: "act",
+    kind: "action",
+    label: "Act",
+    icon: MousePointerClick,
+    accent: "bg-blue-500 text-white",
+    fields: [
+      {
+        key: "instruction",
+        label: "Instruction",
+        placeholder: "Click the sign in button",
+        multiline: true,
+      },
+    ],
+    outputs: [
+      { path: "success", label: "Success" },
+      { path: "message", label: "Message" },
+      { path: "url", label: "URL" },
+    ],
+  },
 } satisfies Record<string, NodeDefinition>
 
 export type NodeType = keyof typeof nodeRegistry
-
 
 export type StepNodeData = {
   type: NodeType
@@ -60,7 +79,6 @@ export type StepNodeData = {
 
 export type StepNodeType = Node<StepNodeData, "step">
 
-
 export type ActionNodeType = {
-  [K in NodeType]:(typeof nodeRegistry)[K]["kind"] extends "action" ? K:never
+  [K in NodeType]: (typeof nodeRegistry)[K]["kind"] extends "action" ? K : never
 }[NodeType]
