@@ -139,11 +139,18 @@ function Inspector({ node }: { node: StepNodeType | undefined }) {
   const insertConnectionToken = (token: string) => {
     if (!targetField) return
 
+    const current = (values[targetField] ?? "").trim()
+
+    // If the field is empty or already looks like a reference placeholder,
+    // replace it entirely rather than appending — prevents accidental doubles
+    // or malformed tokens like "{{ id }}{{ id }}".
+    const isReference = current.startsWith("{{") && current.endsWith("}}")
+
     updateStepNode(node.id, {
       ...node.data,
       values: {
         ...values,
-        [targetField]: `${values[targetField] ?? ""}${token}`,
+        [targetField]: isReference || !current ? token : `${current}${token}`,
       },
     })
   }

@@ -32,7 +32,10 @@ export function interpolate({
   return text.replace(PLACEHOLDER, (_match, expr: string) => {
     const value = getByPath(outputs, expr.trim())
     if (value == null) return ""
-    if (typeof value === "object") return JSON.stringify(value)
+    // Arrays and plain objects resolve to "" — JSON-stringifying them produces
+    // unusable text like "{}" or "[1,2]" that downstream fields (URLs, etc.)
+    // can never consume. Primitive values get coerced to string.
+    if (typeof value === "object") return ""
     return String(value)
   })
 }
