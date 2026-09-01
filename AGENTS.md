@@ -310,3 +310,15 @@ try {
 - Stagehand Docs MCP (Mintlify): https://docs.stagehand.dev/mcp
 - Context7 MCP (Upstash): https://github.com/upstash/context7
 - DeepWiki MCP: https://mcp.deepwiki.com/
+
+
+
+## Adding a workflow node
+
+Three edits, all under features/workflows/nodes/:
+
+the impl file (e.g. open-url.ts) — the node's executor logic,
+register it in node-executors.ts — the satisfies contract makes a missing executor a compile error for action nodes,
+add its manifest entry in node-registry.ts — kind, label, icon, accent, its inputFields, and the outputs downstream nodes can reference.
+
+The run task and the canvas step node are registry-driven — never touch them to add a node.
