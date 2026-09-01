@@ -318,7 +318,7 @@ try {
 Three edits, all under features/workflows/nodes/:
 
 the impl file (e.g. open-url.ts) — the node's executor logic,
-register it in node-executors.ts — the satisfies contract makes a missing executor a compile error for action nodes,
+register it in node-exe.ts — the satisfies contract makes a missing executor a compile error for action nodes,
 add its manifest entry in node-registry.ts — kind, label, icon, accent, its inputFields, and the outputs downstream nodes can reference.
 
 The run task and the canvas step node are registry-driven — never touch them to add a node.
