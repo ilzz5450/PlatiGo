@@ -18,27 +18,30 @@ export async function openUrl({
     )
   }
 
-  // Open a blank page per step so each Open URL node results in its own
-  // page/tab, visible individually in the Browserbase dashboard — then
-  // navigate ONCE. Navigating via newPage(url) AND goto() would reload the
-  // same page twice, and waiting for the full "load" event often times out on
-  // heavy sites once the tab is already open.
-  const page = await stagehand.browser.context.newPage()
+  // Reuse the session's first page instead of opening a fresh tab per step.
+  // One tab means one clean navigation per step — no orphaned blank tabs from
+  // failed navigations, no create-tab transport races, and the whole flow stays
+  // in a single Browserbase recording. (If the session somehow has no page
+  // yet, create one.)
+  let [page] = await stagehand.browser.context.pages()
+  if (!page) {
+    page = await stagehand.browser.context.newPage()
+  }
 
   const navigate = () =>
-    page.goto(url, { waitUntil: "domcontentloaded", timeout: 120_000 })
+    page.goto(trimmed, { waitUntil: "domcontentloaded", timeout: 60_000 })
 
   try {
     await navigate()
   } catch (error) {
-    // The tab is already up in the dashboard; transient Browserbase/transport
-    // failures clear on a retry, so don't fail the step on the first attempt.
+    // Transient Browserbase/transport failures clear on a retry, so don't
+    // fail the step on the first attempt.
     try {
       await navigate()
     } catch {
       throw new Error(
-        `Open URL: failed to load "${url}". ` +
-          `The tab opened but navigation didn't complete: ${error instanceof Error ? error.message : String(error)}`,
+        `Open URL: failed to load "${trimmed}". ` +
+          `Navigation didn't complete: ${error instanceof Error ? error.message : String(error)}`,
         { cause: error }
       )
     }
