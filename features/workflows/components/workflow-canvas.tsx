@@ -1,17 +1,18 @@
 "use client";
 
-import { useCallback } from "react";
 import { useEffect, useState } from "react";
-import {Panel} from "@xyflow/react"
-import {AvatarStack} from "@liveblocks/react-ui"
+import { Panel } from "@xyflow/react";
+import { AvatarStack } from "@liveblocks/react-ui";
 
 import {
   ReactFlow,
   Background,
   Controls,
   BackgroundVariant,
+  ConnectionLineType,
   type ColorMode,
-  type Node,
+  type DefaultEdgeOptions,
+  type ProOptions,
 } from "@xyflow/react";
 
 import { Cursors } from "@liveblocks/react-flow";
@@ -24,6 +25,20 @@ import {
 import "@xyflow/react/dist/style.css";
 import "@liveblocks/react-ui/styles.css";
 import "@liveblocks/react-flow/styles.css";
+
+// Declare object references outside the component to prevent infinite re-renders
+const DEFAULT_EDGE_OPTIONS: DefaultEdgeOptions = {
+  type: "smoothstep",
+  animated: true,
+  style: {
+    strokeWidth: 2,
+    strokeDasharray: "6 6",
+  },
+};
+
+const PRO_OPTIONS: ProOptions = { hideAttribution: true };
+const EMPTY_NODES: any[] = [];
+const EMPTY_EDGES: any[] = [];
 
 export function WorkflowCanvas() {
   // Liveblocks manages the collaborative nodes and edges, shared with the
@@ -64,8 +79,8 @@ export function WorkflowCanvas() {
         // Custom node components
         nodeTypes={nodeTypes}
         // Collaborative nodes and edges from Liveblocks
-        nodes={nodes ?? []}
-        edges={edges ?? []}
+        nodes={nodes ?? EMPTY_NODES}
+        edges={edges ?? EMPTY_EDGES}
         // Node changes
         onNodesChange={onNodesChange}
         // Edge changes
@@ -74,12 +89,16 @@ export function WorkflowCanvas() {
         onConnect={onConnect}
         // Deleting nodes/edges
         onDelete={onDelete}
+        // Stable default edge options reference
+        defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
+        // Stiff smoothstep connection line while dragging new edge
+        connectionLineType={ConnectionLineType.SmoothStep}
         // React Flow light/dark mode
         colorMode={colorMode}
         // Automatically fit the workflow inside the canvas
         fitView
-        // Hide React Flow branding
-        proOptions={{ hideAttribution: true }}
+        // Hide React Flow branding with stable reference
+        proOptions={PRO_OPTIONS}
       >
         {/* Show other users' cursors */}
         <Cursors />

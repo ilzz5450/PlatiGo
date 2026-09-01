@@ -1,11 +1,11 @@
 import type { Node } from "@xyflow/react"
 import {
   Play,
-  ExternalLink,
+  Globe,
   MousePointerClick,
-  FileText,
-  Eye,
-  Bot,
+  FileSearch,
+  ScanEye,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react"
 
@@ -41,7 +41,7 @@ export const nodeRegistry = {
     kind: "trigger",
     label: "Go",
     icon: Play,
-    accent: "bg-green-500 text-white",
+    accent: "bg-emerald-500 text-white",
     fields: [],
     outputs: [],
   },
@@ -49,8 +49,8 @@ export const nodeRegistry = {
     type: "open-url",
     kind: "action",
     label: "Open URL",
-    icon: ExternalLink,
-    accent: "bg-yellow-500 text-white",
+    icon: Globe,
+    accent: "bg-amber-500 text-white",
     fields: [{ key: "url", label: "URL", placeholder: "https://youtube.com" }],
     outputs: [{ path: "url", label: "URL" }, { path: "title", label: "Title" }],
   },
@@ -78,7 +78,7 @@ export const nodeRegistry = {
     type: "extract",
     kind: "action",
     label: "Extract",
-    icon: FileText,
+    icon: FileSearch,
     accent: "bg-purple-500 text-white",
     fields: [
       {
@@ -94,8 +94,8 @@ export const nodeRegistry = {
     type: "observation",
     kind: "action",
     label: "Observation",
-    icon: Eye,
-    accent: "bg-amber-500 text-white",
+    icon: ScanEye,
+    accent: "bg-teal-500 text-white",
     fields: [
       {
         key: "instruction",
@@ -110,7 +110,7 @@ export const nodeRegistry = {
     type: "agent",
     kind: "action",
     label: "iluzzio(Agent)",
-    icon: Bot,
+    icon: Sparkles,
     accent: "bg-rose-500 text-white",
     fields: [
       {

@@ -12,7 +12,7 @@ export async function agent({
   if (!trimmed) {
     throw new Error(
       `iluzzio(Agent): invalid or missing instruction for this step (got "${instruction}"). ` +
-        `Enter an instruction like "Find laptops and open the top result" or reference an upstream node.`
+        `Enter instructions like "Sign in with username 'xxx' and password 'yyy'" or multi-line steps.`
     )
   }
 
@@ -22,26 +22,57 @@ export async function agent({
     page = await stagehand.browser.context.newPage()
   }
 
-  const MAX_STEPS = 5
+  // Parse multi-line or semicolon-separated instructions into sub-steps
+  const lines = trimmed
+    .split(/[\r\n;]+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+
+  const stepsToRun = lines.length > 0 ? lines : [trimmed]
   let stepsCompleted = 0
+  const stepSummaries: string[] = []
 
   try {
-    for (let step = 0; step < MAX_STEPS; step++) {
-      const { data: actions } = await stagehand.observe(trimmed)
+    for (const rawStep of stepsToRun) {
+      const lower = rawStep.toLowerCase()
+      const isUsernameStep =
+        (lower.includes("username") || lower.includes("email")) &&
+        !lower.includes("click") &&
+        !lower.includes("submit")
 
-      if (!actions || actions.length === 0) {
-        break
+      // Direct fast instruction with smart auto-continue intent
+      const fastInstruction = isUsernameStep
+        ? `${rawStep}. If a Next, Continue, or Submit button appears or is required to proceed, click it.`
+        : rawStep
+
+      // Fast single-pass execution (no double observe latency)
+      await stagehand.act(fastInstruction)
+      stepsCompleted++
+      stepSummaries.push(`Executed: ${rawStep}`)
+
+      // Smart auto-advance for two-step login flows (e.g. Google, Microsoft, Slack)
+      if (isUsernameStep) {
+        try {
+          const { data: nextActions } = await stagehand.observe(
+            "Click Next, Continue, or Submit if present on the form"
+          )
+          if (nextActions && nextActions.length > 0 && nextActions[0]) {
+            await stagehand.act(nextActions[0])
+            stepSummaries.push("Auto-advanced: clicked Next/Continue")
+          }
+        } catch {
+          // Single-page form or no next button required
+        }
       }
 
-      const candidate = actions[0]
-      if (!candidate) break
-
-      await stagehand.act(candidate)
-      stepsCompleted++
+      // Micro-pause for ultra-fast execution
+      await new Promise((resolve) => setTimeout(resolve, 100))
     }
 
     const finalUrl = (await page.url()) || ""
-    const message = `iluzzio(Agent) completed task in ${stepsCompleted} step(s). Final page: ${finalUrl}`
+    const message = `iluzzio(Agent) completed ${stepsCompleted} step(s) fast:\n${stepSummaries.join(
+      "\n"
+    )}\nFinal page: ${finalUrl}`
 
     return {
       success: true,
@@ -51,7 +82,9 @@ export async function agent({
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
     throw new Error(
-      `iluzzio(Agent): task execution failed for "${trimmed}". ${errorMessage}`,
+      `iluzzio(Agent): task execution failed on step "${
+        stepsToRun[stepsCompleted] || trimmed
+      }". ${errorMessage}`,
       { cause: error }
     )
   }

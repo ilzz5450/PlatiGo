@@ -59,6 +59,7 @@ const initialEdges = [
     id: "e-start-open-url",
     source: "start",
     target: "open-url",
+    type: "smoothstep",
     animated: true,
     style: {
       strokeWidth: 2,
