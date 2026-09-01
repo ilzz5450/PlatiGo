@@ -53,9 +53,11 @@ export function WorkflowRunsProvider({
   });
 
   const value = useMemo<WorkflowRunsContextValue>(() => {
-    // Most recent run first. Use createdAt (newest timestamp = newest run).
+    // Most recent run first, by updatedAt: a task retry re-streams the same
+    // run id with a fresh attempt, and updatedAt bumps on every attempt, so
+    // the newest attempt always wins over an older failed one.
     const latest = [...runs].sort(
-      (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
+      (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()
     )[0];
 
     if (!latest) {

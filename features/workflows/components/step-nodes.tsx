@@ -56,9 +56,13 @@ function StepNodeComponent({ id, data, selected }: NodeProps<StepNodeType>) {
   const def = nodeRegistry[type]
   const Icon = def.icon
 
-  // Resolve this node's run status from the latest run, matched by node id.
+  // Resolve this node's run status from the latest run (or its newest retry
+  // attempt), matched by node id. Every attempt streams fresh steps to the
+  // canvas, so you see spinner -> green per attempt; a permanently failed
+  // attempt shows red.
   const runStatus = steps.find((s) => s.nodeId === id)?.status
   const isNodeRunning = isLive && runStatus === "running"
+  const isNodeDone = runStatus === "done"
   const isNodeFailed = runStatus === "failed"
 
   // A trigger starts the flow and takes no input, so it has no target handle.
@@ -74,6 +78,7 @@ function StepNodeComponent({ id, data, selected }: NodeProps<StepNodeType>) {
         "flow-node-3d min-w-50 max-w-80 rounded-(--radius) border-2 border-border bg-card text-card-foreground transition-colors",
         selected && "ring-2 ring-ring ring-offset-2 ring-offset-background",
         isNodeRunning && "border-green-500",
+        isNodeDone && "border-green-600/70",
         isNodeFailed && "border-destructive"
       )}
     >
