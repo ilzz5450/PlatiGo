@@ -1,4 +1,4 @@
-import { logger, task } from "@trigger.dev/sdk"
+import { logger, metadata, task } from "@trigger.dev/sdk"
 import toposort from "toposort"
 import {
   browserbase,
@@ -37,6 +37,14 @@ function getErrorMessage(error: unknown): string {
   return details.join(" -> ") || String(error)
 }
 
+// Live execution status for a single node, published to run metadata so the
+// canvas can render progress. Nodes move pending -> running -> done, or
+// running -> failed (which stops the run).
+export type RunStep = {
+  nodeId: string
+  status: "pending" | "running" | "done" | "failed"
+}
+
 export const runWorkflowTask = task({
   id: "run-workflow",
 
@@ -73,6 +81,31 @@ export const runWorkflowTask = task({
     logger.log(`Running workflow ${workflow.name}`, {
       steps: orderedNodeIds.length,
     })
+
+    // Pre-build the step list (all pending) and publish it immediately so the
+    // canvas has the full plan before any node starts.
+    const steps: RunStep[] = orderedNodeIds.map((nodeId) => ({
+      nodeId,
+      status: "pending",
+    }))
+
+    const publishSteps = () => {
+      metadata.set("steps", steps)
+    }
+
+    const setStatus = (
+      nodeId: string,
+      status: RunStep["status"]
+    ): RunStep | undefined => {
+      const step = steps.find((s) => s.nodeId === nodeId)
+      if (!step) return undefined
+      step.status = status
+      publishSteps()
+      return step
+    }
+
+    publishSteps()
+    await metadata.flush()
 
     let browser: StagehandBrowser | undefined
     let stagehand: Stagehand | undefined
@@ -125,6 +158,11 @@ export const runWorkflowTask = task({
           const executor = nodeExecutors[node.data.type]
 
           if (executor) {
+            // Mark running and force a flush so the spinner is pushed before
+            // the executor gets a chance to immediately overwrite it with done.
+            setStatus(node.id, "running")
+            await metadata.flush()
+
             const values = Object.fromEntries(
               Object.entries(node.data.values ?? {}).map(([field, value]) => [
                 field,
@@ -132,10 +170,23 @@ export const runWorkflowTask = task({
               ])
             )
 
-            nodeOutputs[node.id] = await executor({
-              values,
-              getStagehand,
-            })
+            try {
+              nodeOutputs[node.id] = await executor({
+                values,
+                getStagehand,
+              })
+              setStatus(node.id, "done")
+            } catch (error) {
+              // Mark failed and flush before the run stops — a thrown run
+              // returns no output, so this flushed metadata is the only way
+              // the failed state reaches the canvas.
+              setStatus(node.id, "failed")
+              await metadata.flush()
+              logger.error(`Step failed: ${node.data.title}`, {
+                stepError: getErrorDetails(error),
+              })
+              throw error
+            }
           }
         }
       }
@@ -145,7 +196,7 @@ export const runWorkflowTask = task({
     }
 
     return {
-      steps: orderedNodeIds.length,
+      steps,
     }
   },
 })

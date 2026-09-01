@@ -28,6 +28,7 @@ export function interpolate({
   text: string
   outputs: NodeOutputs
 }): string {
+  if (text == null) return ""
   return text.replace(PLACEHOLDER, (_match, expr: string) => {
     const value = getByPath(outputs, expr.trim())
     if (value == null) return ""

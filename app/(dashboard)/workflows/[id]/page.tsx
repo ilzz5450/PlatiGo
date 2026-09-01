@@ -1,8 +1,10 @@
 import { WorkflowShell } from "@/features/workflows/components/workflow-shell"
+import { WorkflowRunsProvider } from "@/features/workflows/components/workflow-runs-provider"
 import { Room } from "@/features/workflows/components/Room"
 import { notFound } from "next/navigation"
 import { getWorkflow } from "@/features/workflows/data"
 import { auth } from "@clerk/nextjs/server"
+import { auth as triggerAuth } from "@trigger.dev/sdk"
 import { liveblocks } from "@/lib/liveblocks" // advange of making a reusable component 
 
 export default async function WorkflowPage({
@@ -39,9 +41,24 @@ export default async function WorkflowPage({
     console.error("Failed to get or create Liveblocks room:", error);
   }
 
+  // Mint a short-lived, read-only public token scoped to this workflow's run
+  // tag. It lets the client subscribe to this workflow's runs in realtime for
+  // about an hour, without exposing the server secret key.
+  const runTag = `workflow:${id}`
+  const publicAccessToken = await triggerAuth.createPublicToken({
+    expirationTime: "1hr",
+    scopes: {
+      read: {
+        tags: [runTag],
+      },
+    },
+  })
+
   return (
     <Room roomId={id}>
-      <WorkflowShell workflowId={id} />
+      <WorkflowRunsProvider workflowId={id} publicAccessToken={publicAccessToken}>
+        <WorkflowShell workflowId={id} />
+      </WorkflowRunsProvider>
     </Room>
   )
 }

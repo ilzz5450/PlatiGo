@@ -8,6 +8,7 @@ import {
   useReactFlow,
 } from "@xyflow/react"
 
+import { Spinner } from "@/components/ui/spinner"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +19,7 @@ import {
   nodeRegistry,
   type StepNodeType,
 } from "@/features/workflows/Nodes/node-registry"
+import { useLatestRunSteps } from "@/features/workflows/components/workflow-runs-provider"
 import { cn } from "@/lib/utils"
 
 // Resolve a `{{ nodeId.path }}` placeholder against the live graph and render a
@@ -49,9 +51,15 @@ function resolveReference(
 function StepNodeComponent({ id, data, selected }: NodeProps<StepNodeType>) {
   const { deleteElements } = useReactFlow()
   const nodes = useStore((s) => s.nodes) as StepNodeType[]
+  const { steps, isLive } = useLatestRunSteps()
   const { type, kind, title, values } = data
   const def = nodeRegistry[type]
   const Icon = def.icon
+
+  // Resolve this node's run status from the latest run, matched by node id.
+  const runStatus = steps.find((s) => s.nodeId === id)?.status
+  const isNodeRunning = isLive && runStatus === "running"
+  const isNodeFailed = runStatus === "failed"
 
   // A trigger starts the flow and takes no input, so it has no target handle.
   const hasTarget = kind !== "trigger"
@@ -63,8 +71,10 @@ function StepNodeComponent({ id, data, selected }: NodeProps<StepNodeType>) {
   return (
     <div
       className={cn(
-        "flow-node-3d min-w-50 max-w-80 rounded-(--radius) border-2 border-border bg-card text-card-foreground",
-        selected && "ring-2 ring-ring ring-offset-2 ring-offset-background"
+        "flow-node-3d min-w-50 max-w-80 rounded-(--radius) border-2 border-border bg-card text-card-foreground transition-colors",
+        selected && "ring-2 ring-ring ring-offset-2 ring-offset-background",
+        isNodeRunning && "border-green-500",
+        isNodeFailed && "border-destructive"
       )}
     >
       {hasTarget && (
@@ -83,7 +93,11 @@ function StepNodeComponent({ id, data, selected }: NodeProps<StepNodeType>) {
             def.accent
           )}
         >
-          <Icon className="size-4" />
+          {isNodeRunning ? (
+            <Spinner className="size-4" />
+          ) : (
+            <Icon className="size-4" />
+          )}
         </div>
         <div className="min-w-0">
           <span className="block text-sm font-semibold">{title}</span>
