@@ -67,6 +67,18 @@ export const runWorkflowTask = task({
       nodes.map((node) => [node.id, node])
     )
 
+    // `nodeId.path` -> what the user *typed* into that node's field. Used as a
+    // fallback when a referenced node hasn't produced runtime output yet, so
+    // `{{ id.url }}` resolves exactly as it displays on the canvas.
+    const staticValues = Object.fromEntries(
+      nodes.flatMap((node) =>
+        Object.entries(node.data.values ?? {}).map(([path, value]) => [
+          `${node.id}.${path}`,
+          typeof value === "string" ? value : undefined,
+        ])
+      )
+    )
+
     const connectedNodeIds = new Set(
       edges.flatMap((edge) => [edge.source, edge.target])
     )
@@ -166,7 +178,11 @@ export const runWorkflowTask = task({
             const values = Object.fromEntries(
               Object.entries(node.data.values ?? {}).map(([field, value]) => [
                 field,
-                interpolate({ text: value, outputs: nodeOutputs }),
+                interpolate({
+                  text: value,
+                  outputs: nodeOutputs,
+                  staticValues,
+                }),
               ])
             )
 

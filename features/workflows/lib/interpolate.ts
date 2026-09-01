@@ -21,16 +21,26 @@ function getByPath(root: NodeOutputs, path: string): unknown {
   }, root)
 }
 
+// Static fallback map of `nodeId.path` -> the value the user *typed* into a
+// node. Runtime outputs win when they exist; if a referenced node hasn't
+// produced output yet (or an upstream step silently produced none), we fall
+// back to the stored value so `{{ id.url }}` resolves to what the canvas shows.
+export type StaticValues = Record<string, string | undefined>
+
 export function interpolate({
   text,
   outputs,
+  staticValues,
 }: {
   text: string
   outputs: NodeOutputs
+  staticValues?: StaticValues
 }): string {
   if (text == null) return ""
   return text.replace(PLACEHOLDER, (_match, expr: string) => {
-    const value = getByPath(outputs, expr.trim())
+    const path = expr.trim()
+    const runtimeValue = getByPath(outputs, path)
+    const value = runtimeValue ?? staticValues?.[path]
     if (value == null) return ""
     // Arrays and plain objects resolve to "" — JSON-stringifying them produces
     // unusable text like "{}" or "[1,2]" that downstream fields (URLs, etc.)
