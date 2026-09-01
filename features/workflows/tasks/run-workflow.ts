@@ -199,28 +199,37 @@ export const runWorkflowTask = task({
       return stagehand
     }
 
-    // Runs one node's executor, retrying ONCE on transport-class failure by
-    // tearing down the dead CDP connection and letting getStagehand() open a
-    // fresh Browserbase session. Everything else (bad URL, logic error)
-    // propagates immediately.
+    // Runs one node's executor, retrying up to MAX_EXECUTOR_ATTEMPTS times on
+    // transport-class failure by tearing down the dead CDP connection and
+    // letting getStagehand() open a fresh Browserbase session. Everything else
+    // (bad URL, logic error) propagates immediately.
+    const MAX_EXECUTOR_ATTEMPTS = 3
     const runExecutorWithRetry = async (
       executor: NodeExecutor,
       values: Record<string, string>
     ): Promise<unknown> => {
-      try {
-        return await executor({ values, getStagehand })
-      } catch (error) {
-        if (!isTransportError(error)) throw error
-
-        logger.warn("Transport error, rebuilding Browserbase session and retrying", {
-          transportError: getErrorDetails(error),
-        })
-        await stagehand?.close().catch(() => undefined)
-        await browser?.close().catch(() => undefined)
-        stagehand = undefined
-        browser = undefined
-        return executor({ values, getStagehand })
+      let lastError: unknown
+      for (let attempt = 1; attempt <= MAX_EXECUTOR_ATTEMPTS; attempt++) {
+        try {
+          return await executor({ values, getStagehand })
+        } catch (error) {
+          lastError = error
+          if (!isTransportError(error) || attempt === MAX_EXECUTOR_ATTEMPTS) {
+            throw error
+          }
+          logger.warn(
+            `Transport error on attempt ${attempt}/${MAX_EXECUTOR_ATTEMPTS}, rebuilding Browserbase session`,
+            {
+              transportError: getErrorDetails(error),
+            }
+          )
+          await stagehand?.close().catch(() => undefined)
+          await browser?.close().catch(() => undefined)
+          stagehand = undefined
+          browser = undefined
+        }
       }
+      throw lastError
     }
 
     try {
