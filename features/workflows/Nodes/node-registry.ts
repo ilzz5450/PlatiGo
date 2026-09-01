@@ -1,5 +1,13 @@
 import type { Node } from "@xyflow/react"
-import { Play, ExternalLink, MousePointerClick, type LucideIcon } from "lucide-react"
+import {
+  Play,
+  ExternalLink,
+  MousePointerClick,
+  FileText,
+  Eye,
+  Bot,
+  type LucideIcon,
+} from "lucide-react"
 
 export type StepNodeKind = "trigger" | "action"
 
@@ -64,6 +72,58 @@ export const nodeRegistry = {
       { path: "success", label: "Success" },
       { path: "message", label: "Message" },
       { path: "url", label: "URL" },
+    ],
+  },
+  extract: {
+    type: "extract",
+    kind: "action",
+    label: "Extract",
+    icon: FileText,
+    accent: "bg-purple-500 text-white",
+    fields: [
+      {
+        key: "instruction",
+        label: "Instruction",
+        placeholder: "Extract the main title and price",
+        multiline: true,
+      },
+    ],
+    outputs: [{ path: "result", label: "Result" }],
+  },
+  observation: {
+    type: "observation",
+    kind: "action",
+    label: "Observation",
+    icon: Eye,
+    accent: "bg-amber-500 text-white",
+    fields: [
+      {
+        key: "instruction",
+        label: "Instruction",
+        placeholder: "Find all interactive buttons on the page",
+        multiline: true,
+      },
+    ],
+    outputs: [{ path: "matches", label: "Matches" }],
+  },
+  agent: {
+    type: "agent",
+    kind: "action",
+    label: "iluzzio(Agent)",
+    icon: Bot,
+    accent: "bg-rose-500 text-white",
+    fields: [
+      {
+        key: "instruction",
+        label: "Instruction",
+        placeholder: "Find laptops and open the top result",
+        multiline: true,
+      },
+    ],
+    outputs: [
+      { path: "success", label: "Success" },
+      { path: "message", label: "Message" },
+      { path: "completed", label: "Completed" },
     ],
   },
 } satisfies Record<string, NodeDefinition>
