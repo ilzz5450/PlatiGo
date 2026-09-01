@@ -8,7 +8,7 @@ import {
 
 import { getWorkflow } from "@/features/workflows/data"
 import { interpolate, type NodeOutputs } from "@/features/workflows/lib/interpolate"
-import { nodeExecutors } from "@/features/workflows/Nodes/node-exe"
+import { nodeExecutors, type NodeExecutor } from "@/features/workflows/Nodes/node-exe"
 
 function getErrorDetails(error: unknown): Record<string, string | undefined> {
   if (!(error instanceof Error)) {
@@ -37,6 +37,35 @@ function getErrorMessage(error: unknown): string {
   return details.join(" -> ") || String(error)
 }
 
+// The Node<->Browserbase CDP link is a WebSocket; when it drops mid-navigation
+// the run surfaces undici/TLS close errors even though the browser itself did
+// everything right (the tab loaded — it's just the result channel that died).
+// Match that whole transport family so we know to rebuild the session and
+// retry instead of failing the step.
+function isTransportError(error: unknown): boolean {
+  const summary = [
+    error instanceof Error ? error.name : String(error),
+    getErrorMessage(error),
+  ]
+    .join(" ")
+    .toLowerCase()
+
+  return [
+    "websocket",
+    "socket",
+    "tls",
+    "undici",
+    "disturbed or locked",
+    "econnreset",
+    "econnrefused",
+    "getaddrinfo",
+    "closed before",
+    "body should not be",
+    "1006",
+    "network",
+  ].some((token) => summary.includes(token))
+}
+
 // Live execution status for a single node, published to run metadata so the
 // canvas can render progress. Nodes move pending -> running -> done, or
 // running -> failed (which stops the run).
@@ -47,6 +76,16 @@ export type RunStep = {
 
 export const runWorkflowTask = task({
   id: "run-workflow",
+
+  // The CDP link to Browserbase drops transiently all the time; let the run
+  // re-attempt from scratch with backoff rather than failing on first hiccup.
+  retry: {
+    maxAttempts: 3,
+    factor: 1.8,
+    minTimeoutInMs: 3_000,
+    maxTimeoutInMs: 30_000,
+    randomize: true,
+  },
 
   run: async ({
     workflowId,
@@ -160,6 +199,30 @@ export const runWorkflowTask = task({
       return stagehand
     }
 
+    // Runs one node's executor, retrying ONCE on transport-class failure by
+    // tearing down the dead CDP connection and letting getStagehand() open a
+    // fresh Browserbase session. Everything else (bad URL, logic error)
+    // propagates immediately.
+    const runExecutorWithRetry = async (
+      executor: NodeExecutor,
+      values: Record<string, string>
+    ): Promise<unknown> => {
+      try {
+        return await executor({ values, getStagehand })
+      } catch (error) {
+        if (!isTransportError(error)) throw error
+
+        logger.warn("Transport error, rebuilding Browserbase session and retrying", {
+          transportError: getErrorDetails(error),
+        })
+        await stagehand?.close().catch(() => undefined)
+        await browser?.close().catch(() => undefined)
+        stagehand = undefined
+        browser = undefined
+        return executor({ values, getStagehand })
+      }
+    }
+
     try {
       for (const nodeId of orderedNodeIds) {
         const node = nodesById.get(nodeId)
@@ -187,10 +250,10 @@ export const runWorkflowTask = task({
             )
 
             try {
-              nodeOutputs[node.id] = await executor({
-                values,
-                getStagehand,
-              })
+              nodeOutputs[node.id] = await runExecutorWithRetry(
+                executor,
+                values
+              )
               setStatus(node.id, "done")
             } catch (error) {
               // Mark failed and flush before the run stops — a thrown run
