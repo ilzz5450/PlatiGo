@@ -80,7 +80,7 @@ export const runWorkflowTask = task({
   // The CDP link to Browserbase drops transiently all the time; let the run
   // re-attempt from scratch with backoff rather than failing on first hiccup.
   retry: {
-    maxAttempts: 3,
+    maxAttempts: 1,
     factor: 1.8,
     minTimeoutInMs: 3_000,
     maxTimeoutInMs: 30_000,
@@ -203,7 +203,7 @@ export const runWorkflowTask = task({
     // transport-class failure by tearing down the dead CDP connection and
     // letting getStagehand() open a fresh Browserbase session. Everything else
     // (bad URL, logic error) propagates immediately.
-    const MAX_EXECUTOR_ATTEMPTS = 3
+    const MAX_EXECUTOR_ATTEMPTS = 1
     const runExecutorWithRetry = async (
       executor: NodeExecutor,
       values: Record<string, string>
