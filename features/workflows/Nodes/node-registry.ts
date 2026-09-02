@@ -6,6 +6,7 @@ import {
   FileSearch,
   ScanEye,
   Sparkles,
+  Mail,
   type LucideIcon,
 } from "lucide-react"
 
@@ -124,6 +125,36 @@ export const nodeRegistry = {
       { path: "success", label: "Success" },
       { path: "message", label: "Message" },
       { path: "completed", label: "Completed" },
+    ],
+  },
+  "send-email": {
+    type: "send-email",
+    kind: "action",
+    label: "Send Email",
+    icon: Mail,
+    accent: "bg-sky-500 text-white",
+    fields: [
+      {
+        key: "to",
+        label: "Recipient",
+        placeholder: "user@example.com",
+      },
+      {
+        key: "subject",
+        label: "Subject",
+        placeholder: "Hello from Platigo",
+      },
+      {
+        key: "body",
+        label: "Body",
+        placeholder: "Write your email body here…",
+        multiline: true,
+      },
+    ],
+    outputs: [
+      { path: "id", label: "Email ID" },
+      { path: "to", label: "Recipient" },
+      { path: "subject", label: "Subject" },
     ],
   },
 } satisfies Record<string, NodeDefinition>
