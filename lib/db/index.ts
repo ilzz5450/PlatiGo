@@ -12,10 +12,7 @@ const globalForDb = globalThis as unknown as {
 
 function createPool() {
   const connectionString = process.env.DATABASE_URL
-  if (!connectionString) {
-    throw new Error("DATABASE_URL is not set in the environment")
-  }
-  return new Pool({ connectionString })
+  return new Pool({ connectionString: connectionString || "" })
 }
 
 const pool = globalForDb.pool ?? createPool()
