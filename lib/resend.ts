@@ -1,8 +1,6 @@
 import { Resend } from "resend"
 
-if (!process.env.RESEND_API_KEY) {
-  throw new Error("Missing RESEND_API_KEY in environment variables.")
-}
+
 
 /**
  * Singleton Resend client.
@@ -25,4 +23,4 @@ if (!process.env.RESEND_API_KEY) {
  * NOTE: The Node.js SDK never throws on API errors — always check `error`
  * explicitly instead of wrapping in try/catch.
  */
-export const resend = new Resend(process.env.RESEND_API_KEY)
+export const resend = new Resend(process.env.RESEND_API_KEY ?? "")
