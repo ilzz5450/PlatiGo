@@ -238,7 +238,7 @@ function Palette({ workflowId }: { workflowId: string }) {
       <div className="border-b p-3">
         <div className="mb-2 flex items-center gap-2 text-xs font-semibold">
           <Sparkles className="size-3.5" />
-          Build with Gemini
+          Build with iLLuzzio
         </div>
         <Textarea
           value={prompt}
