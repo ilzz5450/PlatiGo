@@ -1,6 +1,5 @@
 import { logger, metadata, task } from "@trigger.dev/sdk"
 import toposort from "toposort"
-import Browserbase from "@browserbasehq/sdk"
 import {
   browserbase,
   Stagehand,
@@ -216,12 +215,6 @@ export const runWorkflowTask = task({
       }
 
       try {
-        logger.log("Attempting Browserbase session launch", {
-          hasApiKey: true,
-          apiKeyPrefix: apiKey ? `${apiKey.slice(0, 4)}...${apiKey.slice(-4)}` : "none",
-          hasProjectId: !!projectId,
-        })
-
         browser = await browserbase.launch({
           apiKey,
           ...(projectId ? { projectId } : {}),
@@ -245,29 +238,13 @@ export const runWorkflowTask = task({
             : {}),
         })
       } catch (error) {
-        let apiDiagnostic = ""
-        try {
-          const sdk = new Browserbase({ apiKey })
-          await sdk.sessions.create({
-            ...(projectId ? { projectId } : {}),
-          })
-        } catch (diagError: unknown) {
-          const status = (diagError as { status?: number; statusCode?: number })?.status ||
-            (diagError as { status?: number; statusCode?: number })?.statusCode
-          const msg = (diagError as { message?: string })?.message || String(diagError)
-          const errorObj = (diagError as { error?: unknown })?.error
-          apiDiagnostic = ` [Browserbase API status ${status ?? "unknown"}: ${msg}${errorObj ? ` - ${JSON.stringify(errorObj)}` : ""}]`
-        }
-
         logger.error("Browserbase session failed to start", {
           browserbaseError: getErrorDetails(error),
-          apiDiagnostic,
         })
         await browser?.close().catch(() => undefined)
         browser = undefined
         throw new Error(
-          `Browserbase session startup failed: ${getErrorMessage(error)}.${apiDiagnostic} ` +
-            `Please verify that BROWSERBASE_API_KEY (and optionally BROWSERBASE_PROJECT_ID) in your Trigger.dev Production environment match your Browserbase dashboard credentials, and that your account has active session capacity.`,
+          `Browserbase session startup failed: ${getErrorMessage(error)}`,
           {
             cause: error,
           }
