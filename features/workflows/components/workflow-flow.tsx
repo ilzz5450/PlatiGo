@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useState,
   type ReactNode,
 } from "react";
 import {
@@ -82,11 +83,19 @@ type WorkflowFlowContextValue = {
   addStepNode: (type: NodeType) => void;
   selectedNode: StepNodeType | undefined;
   updateStepNode: (nodeId: string, data: StepNodeType["data"]) => void;
+  applyWorkflowGraph: (graph: {
+    nodes: StepNodeType[];
+    edges: WorkflowEdges;
+  }) => void;
+  removeStepNode: (nodeId: string) => void;
+  isBuilding: boolean;
+  setIsBuilding: (value: boolean) => void;
 };
 
 const WorkflowFlowContext = createContext<WorkflowFlowContextValue | null>(null);
 
 export function WorkflowFlowProvider({ children }: { children: ReactNode }) {
+  const [isBuilding, setIsBuilding] = useState(false);
   const reactFlow = useReactFlow();
   const center = useStore((state) => ({
     x: state.width / 2,
@@ -170,6 +179,42 @@ export function WorkflowFlowProvider({ children }: { children: ReactNode }) {
     [nodes, onNodesChange]
   );
 
+  const applyWorkflowGraph = useCallback(
+    (graph: { nodes: StepNodeType[]; edges: WorkflowEdges }) => {
+      const currentNodes = nodes ?? [];
+      const currentEdges = edges ?? [];
+
+      if (currentNodes.length > 0) {
+        onNodesChange(currentNodes.map((node) => ({ type: "remove", id: node.id })));
+      }
+      if (currentEdges.length > 0) {
+        onEdgesChange(currentEdges.map((edge) => ({ type: "remove", id: edge.id })));
+      }
+
+      if (graph.nodes.length > 0) {
+        onNodesChange(graph.nodes.map((node) => ({ type: "add", item: node })));
+      }
+      if (graph.edges.length > 0) {
+        onEdgesChange(graph.edges.map((edge) => ({ type: "add", item: edge })));
+      }
+    },
+    [edges, nodes, onEdgesChange, onNodesChange]
+  );
+
+  const removeStepNode = useCallback(
+    (nodeId: string) => {
+      const connectedEdges = (edges ?? []).filter(
+        (edge) => edge.source === nodeId || edge.target === nodeId
+      );
+
+      if (connectedEdges.length > 0) {
+        onEdgesChange(connectedEdges.map((edge) => ({ type: "remove", id: edge.id })));
+      }
+      onNodesChange([{ type: "remove", id: nodeId }]);
+    },
+    [edges, onEdgesChange, onNodesChange]
+  );
+
   const value: WorkflowFlowContextValue = {
     nodes,
     edges,
@@ -180,6 +225,10 @@ export function WorkflowFlowProvider({ children }: { children: ReactNode }) {
     addStepNode,
     selectedNode,
     updateStepNode,
+    applyWorkflowGraph,
+    removeStepNode,
+    isBuilding,
+    setIsBuilding,
   };
 
   return (

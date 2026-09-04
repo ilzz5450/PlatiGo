@@ -2,13 +2,11 @@
 
 import {
   Empty,
-  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty"
-import { Button } from "@/components/ui/button"
 import { FolderGit2 } from "lucide-react"
 
 export default function Page() {
@@ -22,12 +20,9 @@ export default function Page() {
             </EmptyMedia>
             <EmptyTitle>No workflow selected</EmptyTitle>
             <EmptyDescription>
-              Select a workflow from the sidebar or create a new one to get started.
+              Select a workflow from the sidebar to get started.
             </EmptyDescription>
           </EmptyHeader>
-          <EmptyContent>
-            <Button size="sm">Create workflow</Button>
-          </EmptyContent>
         </Empty>
       </div>
     </div>

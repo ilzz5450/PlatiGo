@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { deleteWorkflowAction, runWorkflowAction } from "@/features/workflows/actions"
 import { toast } from "sonner"
-import { MoreHorizontal, Play, Trash2 } from "lucide-react"
+import { LoaderCircle, MoreHorizontal, Play, Sparkles, Trash2 } from "lucide-react"
 import { validateGraph } from "@/features/workflows/lib/graph-validation"
 import { useReactFlow } from "@xyflow/react"
 
@@ -27,7 +27,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { ResizablePanel } from "@/components/ui/resizable"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { cn } from "@/lib/utils"
 
 import {
   nodeRegistry,
@@ -197,11 +196,62 @@ const sections: { kind: StepNodeKind; label: string }[] = [
 const definitions = Object.values(nodeRegistry)
 
 
-function Palette() {
-  const { addStepNode } = useWorkflowFlow()
+function Palette({ workflowId }: { workflowId: string }) {
+  const { addStepNode, applyWorkflowGraph, edges, nodes, removeStepNode, isBuilding, setIsBuilding } = useWorkflowFlow()
+  const [prompt, setPrompt] = useState("")
+
+  const buildWorkflow = async () => {
+    if (!prompt.trim() || isBuilding) return
+    setIsBuilding(true)
+    try {
+      const seededOpenUrlId = "open-url"
+      const graphWithoutSeededOpenUrl = {
+        nodes: (nodes ?? []).filter((node) => node.id !== seededOpenUrlId),
+        edges: (edges ?? []).filter(
+          (edge) => edge.source !== seededOpenUrlId && edge.target !== seededOpenUrlId
+        ),
+      }
+
+      if ((nodes ?? []).some((node) => node.id === seededOpenUrlId)) {
+        removeStepNode(seededOpenUrlId)
+      }
+
+      const response = await fetch(`/api/workflows/${workflowId}/build`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, graph: graphWithoutSeededOpenUrl }),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error ?? "Could not build workflow")
+      applyWorkflowGraph(result.graph)
+      setPrompt("")
+      toast.success("Workflow built")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not build workflow")
+    } finally {
+      setIsBuilding(false)
+    }
+  }
 
   return (
     <Section title="Your Tools">
+      <div className="border-b p-3">
+        <div className="mb-2 flex items-center gap-2 text-xs font-semibold">
+          <Sparkles className="size-3.5" />
+          Build with Gemini
+        </div>
+        <Textarea
+          value={prompt}
+          onChange={(event) => setPrompt(event.target.value)}
+          placeholder="Describe the workflow you want..."
+          className="mb-2 min-h-20 resize-y text-xs"
+          disabled={isBuilding}
+        />
+        <Button className="w-full gap-2 text-xs" onClick={() => void buildWorkflow()} disabled={!prompt.trim() || isBuilding}>
+          {isBuilding ? <LoaderCircle className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
+          {isBuilding ? "Building..." : "Build workflow"}
+        </Button>
+      </div>
       <Accordion
         type="multiple"
         defaultValue={sections.map((s) => s.kind)}
@@ -307,9 +357,9 @@ function RunButton({ workflowId }: { workflowId: string }) {
 
       await runWorkflowAction({ id: workflowId, graph })
       toast.success("Workflow triggered successfully on Trigger.dev!")
-    } catch (error: any) {
+    } catch (error) {
       console.error("Failed to run workflow:", error)
-      toast.error(error?.message || "Failed to run workflow")
+      toast.error(error instanceof Error ? error.message : "Failed to run workflow")
     } finally {
       setIsRunning(false)
     }
@@ -363,7 +413,7 @@ export function RightSidebar({ workflowId }: { workflowId: string }) {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="toolbar" className="flex min-h-0 flex-col">
-          <Palette />
+          <Palette workflowId={workflowId} />
         </TabsContent>
         <TabsContent value="editor" className="flex min-h-0 flex-col">
           <Inspector node={selectedNode} />

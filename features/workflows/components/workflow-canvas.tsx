@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Panel } from "@xyflow/react";
 import { AvatarStack } from "@liveblocks/react-ui";
+import { LoaderCircle } from "lucide-react";
 
 import {
   ReactFlow,
@@ -13,6 +14,7 @@ import {
   type ColorMode,
   type DefaultEdgeOptions,
   type ProOptions,
+  type Edge,
 } from "@xyflow/react";
 
 import { Cursors } from "@liveblocks/react-flow";
@@ -21,6 +23,7 @@ import {
   nodeTypes,
   useWorkflowFlow,
 } from "@/features/workflows/components/workflow-flow";
+import type { StepNodeType } from "@/features/workflows/Nodes/node-registry";
 
 import "@xyflow/react/dist/style.css";
 import "@liveblocks/react-ui/styles.css";
@@ -37,13 +40,13 @@ const DEFAULT_EDGE_OPTIONS: DefaultEdgeOptions = {
 };
 
 const PRO_OPTIONS: ProOptions = { hideAttribution: true };
-const EMPTY_NODES: any[] = [];
-const EMPTY_EDGES: any[] = [];
+const EMPTY_NODES: StepNodeType[] = [];
+const EMPTY_EDGES: Edge[] = [];
 
 export function WorkflowCanvas() {
   // Liveblocks manages the collaborative nodes and edges, shared with the
   // palette in the right sidebar via WorkflowFlowProvider.
-  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, onDelete } =
+  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, onDelete, isBuilding } =
     useWorkflowFlow();
 
   // Keep React Flow's color mode synchronized with the application's
@@ -145,6 +148,14 @@ export function WorkflowCanvas() {
           <AvatarStack />
         </Panel>
       </ReactFlow>
+      {isBuilding && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/65 backdrop-blur-[2px]" role="status" aria-live="polite">
+          <div className="flex items-center gap-2 rounded-lg border bg-background px-4 py-3 text-sm shadow-lg">
+            <LoaderCircle className="size-4 animate-spin" />
+            Building workflow...
+          </div>
+        </div>
+      )}
     </div>
   );
 }
