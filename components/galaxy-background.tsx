@@ -1821,7 +1821,7 @@ export default function PlatigoScene() {
             fontWeight: 700,
           }}
         >
-          ILLUZZIO
+          PLATIGO
         </div>
 
         <div
