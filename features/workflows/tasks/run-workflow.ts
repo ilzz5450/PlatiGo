@@ -205,7 +205,8 @@ export const runWorkflowTask = task({
         return stagehand
       }
 
-      const apiKey = process.env.BROWSERBASE_API_KEY
+      const apiKey = process.env.BROWSERBASE_API_KEY?.trim()
+      const projectId = process.env.BROWSERBASE_PROJECT_ID?.trim()
 
       if (!apiKey) {
         throw new Error(
@@ -214,24 +215,41 @@ export const runWorkflowTask = task({
       }
 
       try {
-        browser = await browserbase.launch({ apiKey })
+        browser = await browserbase.launch({
+          apiKey,
+          ...(projectId ? { projectId } : {}),
+        })
         logger.log("Browserbase session started", {
           browserbaseSessionId: browser.sessionId,
         })
 
+        const modelApiKey = process.env.OPENAI_API_KEY?.trim()
+
         stagehand = await Stagehand.create({
           browser,
           logging: { level: "off" },
+          ...(modelApiKey
+            ? {
+                model: {
+                  modelName: "openai/gpt-4o-mini",
+                  apiKey: modelApiKey,
+                },
+              }
+            : {}),
         })
       } catch (error) {
         logger.error("Browserbase session failed to start", {
           browserbaseError: getErrorDetails(error),
         })
-        await browser?.close()
+        await browser?.close().catch(() => undefined)
         browser = undefined
-        throw new Error(`Browserbase session startup failed: ${getErrorMessage(error)}`, {
-          cause: error,
-        })
+        throw new Error(
+          `Browserbase session startup failed: ${getErrorMessage(error)}. ` +
+            `Ensure BROWSERBASE_API_KEY (and optionally BROWSERBASE_PROJECT_ID) are set and valid in Trigger.dev environment variables, and that your Browserbase account has active session capacity.`,
+          {
+            cause: error,
+          }
+        )
       }
 
       return stagehand
