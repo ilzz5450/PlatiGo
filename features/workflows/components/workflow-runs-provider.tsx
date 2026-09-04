@@ -15,7 +15,23 @@ import type { RunStep } from "@/features/workflows/tasks/run-workflow";
 // covers waiting-to-run and actively-executing runs.
 const LIVE_STATUSES = new Set(["QUEUED", "EXECUTING", "REATTEMPTING", "DELAYED"]);
 
-type WorkflowRunsContextValue = {
+export type WorkflowRun = {
+  id: string;
+  status: string;
+  createdAt: Date;
+  startedAt?: Date;
+  finishedAt?: Date;
+  durationMs?: number;
+  isLive: boolean;
+  steps: RunStep[];
+  error?: string;
+};
+
+export type WorkflowRunsContextValue = {
+  // All runs for this workflow, newest first.
+  runs: WorkflowRun[];
+  // The most recent run, or undefined if no runs exist yet.
+  latestRun: WorkflowRun | undefined;
   // The most recent run's steps — preferring the final output, falling back to
   // the live metadata steps. Empty array if there are no runs yet.
   steps: RunStep[];
@@ -32,8 +48,8 @@ function isRunLive(status: string | undefined): boolean {
 }
 
 // A single shared realtime subscription to this workflow's runs (by their
-// `workflow:<id>` tag). Any component under this provider can read the latest
-// run's step progress via `useLatestRunSteps`.
+// `workflow:<id>` tag). Any component under this provider can read all runs
+// and steps via `useWorkflowRuns`, or the latest run's step progress via `useLatestRunSteps`.
 export function WorkflowRunsProvider({
   workflowId,
   publicAccessToken,
@@ -45,7 +61,7 @@ export function WorkflowRunsProvider({
 }) {
   const tag = `workflow:${workflowId}`;
 
-  const { runs } = useRealtimeRunsWithTag<typeof runWorkflowTask>(tag, {
+  const { runs: rawRuns } = useRealtimeRunsWithTag<typeof runWorkflowTask>(tag, {
     accessToken: publicAccessToken,
     // We only need the final output steps + live metadata steps; skip the
     // (potentially large) input payload.
@@ -53,30 +69,58 @@ export function WorkflowRunsProvider({
   });
 
   const value = useMemo<WorkflowRunsContextValue>(() => {
-    // Most recent run first, by updatedAt: a task retry re-streams the same
-    // run id with a fresh attempt, and updatedAt bumps on every attempt, so
-    // the newest attempt always wins over an older failed one.
-    const latest = [...runs].sort(
-      (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()
-    )[0];
+    // Sort runs newest first by updatedAt / createdAt: a task retry re-streams
+    // the same run id with a fresh attempt, and updatedAt bumps on every attempt,
+    // so the newest attempt always wins over an older failed one.
+    const sortedRaw = [...rawRuns].sort(
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    );
 
-    if (!latest) {
-      return { steps: [], isLive: false, status: undefined };
-    }
+    const runs: WorkflowRun[] = sortedRaw.map((run) => {
+      const preferredSteps =
+        (run.output as { steps?: RunStep[] } | undefined)?.steps ??
+        (run.metadata?.steps as RunStep[] | undefined) ??
+        [];
 
-    // Prefer the run's final output steps; a live run has no output yet, so
-    // fall back to the metadata steps published as it executes.
-    const preferred =
-      (latest.output as { steps?: RunStep[] } | undefined)?.steps ??
-      (latest.metadata?.steps as RunStep[] | undefined) ??
-      [];
+      const startedAt = run.startedAt ? new Date(run.startedAt) : undefined;
+      const finishedAt = run.finishedAt ? new Date(run.finishedAt) : undefined;
+      const durationMs =
+        startedAt && finishedAt
+          ? finishedAt.getTime() - startedAt.getTime()
+          : undefined;
+
+      const runError = (run as { error?: unknown }).error;
+      const error = runError
+        ? typeof runError === "string"
+          ? runError
+          : typeof runError === "object" && runError !== null && "message" in runError
+            ? String((runError as { message: unknown }).message)
+            : String(runError)
+        : undefined;
+
+      return {
+        id: run.id,
+        status: run.status,
+        createdAt: new Date(run.createdAt),
+        startedAt,
+        finishedAt,
+        durationMs,
+        isLive: isRunLive(run.status),
+        steps: preferredSteps,
+        error,
+      };
+    });
+
+    const latestRun = runs[0];
 
     return {
-      steps: preferred,
-      isLive: isRunLive(latest.status),
-      status: latest.status,
+      runs,
+      latestRun,
+      steps: latestRun?.steps ?? [],
+      isLive: latestRun?.isLive ?? false,
+      status: latestRun?.status,
     };
-  }, [runs]);
+  }, [rawRuns]);
 
   return (
     <WorkflowRunsContext.Provider value={value}>
@@ -85,7 +129,7 @@ export function WorkflowRunsProvider({
   );
 }
 
-function useWorkflowRuns() {
+export function useWorkflowRuns(): WorkflowRunsContextValue {
   const ctx = useContext(WorkflowRunsContext);
   if (!ctx) {
     throw new Error(

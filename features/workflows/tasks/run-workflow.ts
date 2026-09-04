@@ -9,6 +9,7 @@ import {
 import { getWorkflow } from "@/features/workflows/data"
 import { interpolate, type NodeOutputs } from "@/features/workflows/lib/interpolate"
 import { nodeExecutors, type NodeExecutor } from "@/features/workflows/Nodes/node-exe"
+import type { NodeType } from "@/features/workflows/Nodes/node-registry"
 
 function getErrorDetails(error: unknown): Record<string, string | undefined> {
   if (!(error instanceof Error)) {
@@ -66,12 +67,18 @@ function isTransportError(error: unknown): boolean {
   ].some((token) => summary.includes(token))
 }
 
-// Live execution status for a single node, published to run metadata so the
-// canvas can render progress. Nodes move pending -> running -> done, or
-// running -> failed (which stops the run).
+// Live execution status and details for a single node, published to run metadata
+// so the canvas and console can render progress, timing, outputs, and errors.
 export type RunStep = {
   nodeId: string
+  nodeType: NodeType
+  title: string
   status: "pending" | "running" | "done" | "failed"
+  startedAt?: number
+  finishedAt?: number
+  durationMs?: number
+  output?: any
+  error?: string
 }
 
 export const runWorkflowTask = task({
@@ -134,23 +141,54 @@ export const runWorkflowTask = task({
     })
 
     // Pre-build the step list (all pending) and publish it immediately so the
-    // canvas has the full plan before any node starts.
-    const steps: RunStep[] = orderedNodeIds.map((nodeId) => ({
-      nodeId,
-      status: "pending",
-    }))
+    // canvas and console have the full plan before any node starts.
+    const steps: RunStep[] = orderedNodeIds.map((nodeId) => {
+      const node = nodesById.get(nodeId)
+      return {
+        nodeId,
+        nodeType: (node?.data.type ?? "start") as NodeType,
+        title: node?.data.title ?? "Step",
+        status: "pending",
+      }
+    })
 
     const publishSteps = () => {
       metadata.set("steps", steps)
     }
 
-    const setStatus = (
+    const setStepRunning = (nodeId: string): RunStep | undefined => {
+      const step = steps.find((s) => s.nodeId === nodeId)
+      if (!step) return undefined
+      step.status = "running"
+      step.startedAt = Date.now()
+      publishSteps()
+      return step
+    }
+
+    const setStepDone = (
       nodeId: string,
-      status: RunStep["status"]
+      output?: unknown
     ): RunStep | undefined => {
       const step = steps.find((s) => s.nodeId === nodeId)
       if (!step) return undefined
-      step.status = status
+      step.status = "done"
+      step.finishedAt = Date.now()
+      step.durationMs = step.startedAt ? step.finishedAt - step.startedAt : 0
+      step.output = output
+      publishSteps()
+      return step
+    }
+
+    const setStepFailed = (
+      nodeId: string,
+      error: unknown
+    ): RunStep | undefined => {
+      const step = steps.find((s) => s.nodeId === nodeId)
+      if (!step) return undefined
+      step.status = "failed"
+      step.finishedAt = Date.now()
+      step.durationMs = step.startedAt ? step.finishedAt - step.startedAt : undefined
+      step.error = getErrorMessage(error)
       publishSteps()
       return step
     }
@@ -241,40 +279,47 @@ export const runWorkflowTask = task({
 
           const executor = nodeExecutors[node.data.type]
 
-          if (executor) {
-            // Mark running and force a flush so the spinner is pushed before
-            // the executor gets a chance to immediately overwrite it with done.
-            setStatus(node.id, "running")
+          if (!executor) {
+            // Trigger nodes (like 'start') don't have an action executor;
+            // mark them completed immediately and flush before continuing.
+            setStepDone(node.id)
             await metadata.flush()
+            continue
+          }
 
-            const values = Object.fromEntries(
-              Object.entries(node.data.values ?? {}).map(([field, value]) => [
-                field,
-                interpolate({
-                  text: value,
-                  outputs: nodeOutputs,
-                  staticValues,
-                }),
-              ])
+          // Mark running and force a flush so the spinner is pushed before
+          // the executor gets a chance to immediately overwrite it with done.
+          setStepRunning(node.id)
+          await metadata.flush()
+
+          const values = Object.fromEntries(
+            Object.entries(node.data.values ?? {}).map(([field, value]) => [
+              field,
+              interpolate({
+                text: value,
+                outputs: nodeOutputs,
+                staticValues,
+              }),
+            ])
+          )
+
+          try {
+            const output = await runExecutorWithRetry(
+              executor,
+              values
             )
-
-            try {
-              nodeOutputs[node.id] = await runExecutorWithRetry(
-                executor,
-                values
-              )
-              setStatus(node.id, "done")
-            } catch (error) {
-              // Mark failed and flush before the run stops — a thrown run
-              // returns no output, so this flushed metadata is the only way
-              // the failed state reaches the canvas.
-              setStatus(node.id, "failed")
-              await metadata.flush()
-              logger.error(`Step failed: ${node.data.title}`, {
-                stepError: getErrorDetails(error),
-              })
-              throw error
-            }
+            nodeOutputs[node.id] = output
+            setStepDone(node.id, output)
+          } catch (error) {
+            // Mark failed and flush before the run stops — a thrown run
+            // returns no output, so this flushed metadata is the only way
+            // the failed state reaches the canvas and console.
+            setStepFailed(node.id, error)
+            await metadata.flush()
+            logger.error(`Step failed: ${node.data.title}`, {
+              stepError: getErrorDetails(error),
+            })
+            throw error
           }
         }
       }

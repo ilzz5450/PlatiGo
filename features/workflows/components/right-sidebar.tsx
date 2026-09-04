@@ -37,26 +37,9 @@ import {
   type StepNodeKind,
   type StepNodeType,
 } from "@/features/workflows/Nodes/node-registry"
+import { NodeIcon } from "@/features/workflows/components/node-icon"
 import { useWorkflowFlow } from "@/features/workflows/components/workflow-flow"
 import { useUpstreamConnections } from "@/features/workflows/hooks/use-upstream-connections"
-
-
-
-function NodeIcon({ type, className }: { type: NodeType; className?: string }) {
-  const def = nodeRegistry[type]
-  const Icon = def.icon
-  return (
-    <span
-      className={cn(
-        "flex size-6 shrink-0 items-center justify-center rounded-md",
-        def.accent,
-        className
-      )}
-    >
-      <Icon className="size-3.5" />
-    </span>
-  )
-}
 
 // A titled, scrollable panel. Each tab renders its content inside one. for the workflow 
 function Section({

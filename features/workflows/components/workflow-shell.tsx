@@ -6,6 +6,7 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable"
+import { ConsolePanel } from "@/features/workflows/components/console-panel"
 import { RightSidebar } from "@/features/workflows/components/right-sidebar"
 import { WorkflowCanvas } from "@/features/workflows/components/workflow-canvas"
 import { WorkflowFlowProvider } from "@/features/workflows/components/workflow-flow"
@@ -32,9 +33,7 @@ export function WorkflowShell({ workflowId }: { workflowId: string }) {
           </ResizablePanel>
           <ResizableHandle withHandle />
           <ResizablePanel defaultSize={8 * REM} minSize={6 * REM}>
-            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              Logs
-            </div>
+            <ConsolePanel />
           </ResizablePanel>
         </ResizablePanelGroup>
       </ResizablePanel>

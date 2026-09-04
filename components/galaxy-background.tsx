@@ -1821,7 +1821,7 @@ export default function PlatigoScene() {
             fontWeight: 700,
           }}
         >
-          PLATIGO
+          ILLUZZIO
         </div>
 
         <div
@@ -1832,7 +1832,7 @@ export default function PlatigoScene() {
             marginTop: "4px",
           }}
         >
-          PlatiGo - Tell It Where to Go,
+          illuzzio - Tell It Where to Go,
           Watch It Run the Show....
         </div>
 
