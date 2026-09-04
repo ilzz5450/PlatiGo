@@ -322,3 +322,17 @@ register it in node-exe.ts — the satisfies contract makes a missing executor a
 add its manifest entry in node-registry.ts — kind, label, icon, accent, its inputFields, and the outputs downstream nodes can reference.
 
 The run task and the canvas step node are registry-driven — never touch them to add a node.
+
+
+
+## Browserbase observability
+
+Session recordings, replays, live view, and logs come from the core Browserbase SDK
+(`@browserbasehq/sdk`) — not Stagehand. Before building any observability feature, consult
+Browserbase's observability docs:
+https://docs.browserbase.com/platform/browser/observability
+
+Session replay specifically — retrieving a session's recording as an HLS playlist — is
+documented here:
+https://docs.browserbase.com/platform/browser/observability/session-replay
+The retrieval needs the secret API key, so it must be proxied server-side.

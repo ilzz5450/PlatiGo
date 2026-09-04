@@ -24,6 +24,7 @@ export type WorkflowRun = {
   durationMs?: number;
   isLive: boolean;
   steps: RunStep[];
+  sessionId?: string;
   error?: string;
 };
 
@@ -81,6 +82,7 @@ export function WorkflowRunsProvider({
         (run.output as { steps?: RunStep[] } | undefined)?.steps ??
         (run.metadata?.steps as RunStep[] | undefined) ??
         [];
+      const sessionId = (run.output as { sessionId?: string } | undefined)?.sessionId;
 
       const startedAt = run.startedAt ? new Date(run.startedAt) : undefined;
       const finishedAt = run.finishedAt ? new Date(run.finishedAt) : undefined;
@@ -107,6 +109,7 @@ export function WorkflowRunsProvider({
         durationMs,
         isLive: isRunLive(run.status),
         steps: preferredSteps,
+        sessionId,
         error,
       };
     });

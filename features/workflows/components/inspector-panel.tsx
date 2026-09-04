@@ -7,6 +7,7 @@ import {
   Check,
   CheckCircle2,
   Copy,
+  Film,
   Info,
   X,
 } from "lucide-react"
@@ -15,16 +16,50 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { NodeIcon } from "@/features/workflows/components/node-icon"
+import { SessionReplay } from "@/features/workflows/components/session-replay"
 import type { RunStep } from "@/features/workflows/tasks/run-workflow"
+
+type InspectorPanelProps = {
+  step?: RunStep
+  sessionId?: string
+  onClose?: () => void
+}
 
 export function InspectorPanel({
   step,
+  sessionId,
   onClose,
-}: {
-  step: RunStep
-  onClose?: () => void
-}) {
+}: InspectorPanelProps) {
   const [copied, setCopied] = useState(false)
+
+  if (sessionId) {
+    return (
+      <div className="flex size-full min-h-0 flex-col bg-background">
+        <div className="flow-panel-3d flex items-center justify-between border-b border-border bg-card px-3 py-1.5 text-xs font-semibold">
+          <div className="flex items-center gap-2 min-w-0">
+            <Film className="size-4 shrink-0" />
+            <span className="truncate">Replay</span>
+          </div>
+          {onClose && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="size-5 rounded-xs text-muted-foreground hover:text-foreground"
+              aria-label="Close replay"
+            >
+              <X className="size-3" />
+            </Button>
+          )}
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-3">
+          <SessionReplay sessionId={sessionId} className="size-full" />
+        </div>
+      </div>
+    )
+  }
+
+  if (!step) return null
 
   const isRunning = step.status === "running"
   const isFailed = step.status === "failed"

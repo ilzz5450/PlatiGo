@@ -1,7 +1,7 @@
 "use client"
 
 import prettyMs from "pretty-ms"
-import { AlertCircle, CheckCircle2, Terminal, Trash2 } from "lucide-react"
+import { AlertCircle, CheckCircle2, Film, Terminal, Trash2 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -16,7 +16,44 @@ import { cn } from "@/lib/utils"
 
 export type SelectedStep = {
   runId: string
+  selection: "step"
+  nodeId: string
   step: RunStep
+}
+
+export type SelectedReplay = {
+  runId: string
+  selection: "replay"
+  sessionId: string
+}
+
+export type ConsoleSelection = SelectedStep | SelectedReplay
+
+function ReplayItem({
+  runId,
+  isSelected,
+  onToggle,
+}: {
+  runId: string
+  isSelected: boolean
+  onToggle: (runId: string) => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onToggle(runId)}
+      className={cn(
+        "flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-xs transition-colors",
+        isSelected
+          ? "bg-accent font-medium text-accent-foreground ring-1 ring-ring"
+          : "hover:bg-muted/60"
+      )}
+    >
+      <Film className="size-5 shrink-0 text-muted-foreground" />
+      <span className="min-w-0 flex-1 truncate font-medium">Replay</span>
+      <span className="shrink-0 text-[11px] text-muted-foreground">Recording</span>
+    </button>
+  )
 }
 
 function RunStatusBadge({ run }: { run: WorkflowRun }) {
@@ -123,13 +160,15 @@ function StepItem({
 
 export function LogsPanel({
   runs: propRuns,
-  selectedStep,
+  selectedSelection,
   onToggleStep,
+  onToggleReplay,
   onClear,
 }: {
   runs?: WorkflowRun[]
-  selectedStep: SelectedStep | null
+  selectedSelection: ConsoleSelection | null
   onToggleStep: (runId: string, step: RunStep) => void
+  onToggleReplay: (runId: string) => void
   onClear?: () => void
 }) {
   const { runs: contextRuns } = useWorkflowRuns()
@@ -207,8 +246,9 @@ export function LogsPanel({
               <div className="space-y-1">
                 {run.steps.map((step) => {
                   const isSelected =
-                    selectedStep?.runId === run.id &&
-                    selectedStep?.step.nodeId === step.nodeId
+                    selectedSelection?.selection === "step" &&
+                    selectedSelection.runId === run.id &&
+                    selectedSelection.step.nodeId === step.nodeId
 
                   return (
                     <StepItem
@@ -220,6 +260,19 @@ export function LogsPanel({
                     />
                   )
                 })}
+              </div>
+            )}
+
+            {!run.isLive && run.sessionId && (
+              <div className="mt-1 space-y-1">
+                <ReplayItem
+                  runId={run.id}
+                  isSelected={
+                    selectedSelection?.selection === "replay" &&
+                    selectedSelection.runId === run.id
+                  }
+                  onToggle={onToggleReplay}
+                />
               </div>
             )}
           </div>

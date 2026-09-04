@@ -198,6 +198,7 @@ export const runWorkflowTask = task({
 
     let browser: StagehandBrowser | undefined
     let stagehand: Stagehand | undefined
+    let sessionId: string | undefined
     const nodeOutputs: NodeOutputs = {}
 
     const getStagehand = async (): Promise<Stagehand> => {
@@ -219,8 +220,9 @@ export const runWorkflowTask = task({
           apiKey,
           ...(projectId ? { projectId } : {}),
         })
+        sessionId = browser.sessionId
         logger.log("Browserbase session started", {
-          browserbaseSessionId: browser.sessionId,
+          browserbaseSessionId: sessionId,
         })
 
         const modelApiKey = process.env.OPENAI_API_KEY?.trim()
@@ -347,6 +349,7 @@ export const runWorkflowTask = task({
 
     return {
       steps,
+      sessionId,
     }
   },
 })

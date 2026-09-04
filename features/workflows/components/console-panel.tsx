@@ -7,15 +7,15 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable"
 import { InspectorPanel } from "@/features/workflows/components/inspector-panel"
-import { LogsPanel, type SelectedStep } from "@/features/workflows/components/logs-panel"
+import {
+  LogsPanel,
+  type ConsoleSelection,
+} from "@/features/workflows/components/logs-panel"
 import { useWorkflowRuns } from "@/features/workflows/components/workflow-runs-provider"
 import type { RunStep } from "@/features/workflows/tasks/run-workflow"
 
 export function ConsolePanel() {
-  const [selectedKey, setSelectedKey] = useState<{
-    runId: string
-    nodeId: string
-  } | null>(null)
+  const [selectedKey, setSelectedKey] = useState<ConsoleSelection | null>(null)
   const [clearedAt, setClearedAt] = useState<number | null>(null)
 
   const { runs } = useWorkflowRuns()
@@ -25,21 +25,39 @@ export function ConsolePanel() {
     : runs
 
   const activeRun = visibleRuns.find((r) => r.id === selectedKey?.runId)
-  const activeStep = activeRun?.steps.find(
-    (s) => s.nodeId === selectedKey?.nodeId
-  )
+  const selectedStep = (() => {
+    if (selectedKey?.selection !== "step" || !activeRun) return null
+    const step = activeRun.steps.find((item) => item.nodeId === selectedKey.nodeId)
+    return step ? { ...selectedKey, step } : null
+  })()
 
-  const selectedStep: SelectedStep | null =
-    selectedKey && activeStep
-      ? { runId: selectedKey.runId, step: activeStep }
+  const selectedReplay =
+    selectedKey?.selection === "replay" && activeRun?.sessionId
+      ? { runId: selectedKey.runId, selection: "replay" as const, sessionId: activeRun.sessionId }
       : null
 
   const handleToggleStep = (runId: string, step: RunStep) => {
     setSelectedKey((current) => {
-      if (current?.runId === runId && current?.nodeId === step.nodeId) {
+      if (
+        current?.selection === "step" &&
+        current.runId === runId &&
+        current.nodeId === step.nodeId
+      ) {
         return null
       }
-      return { runId, nodeId: step.nodeId }
+      return { runId, selection: "step", nodeId: step.nodeId, step }
+    })
+  }
+
+  const handleToggleReplay = (runId: string) => {
+    setSelectedKey((current) => {
+      if (current?.runId === runId && current.selection === "replay") {
+        return null
+      }
+      const run = visibleRuns.find((item) => item.id === runId)
+      return run?.sessionId && !run.isLive
+        ? { runId, selection: "replay", sessionId: run.sessionId }
+        : null
     })
   }
 
@@ -54,20 +72,22 @@ export function ConsolePanel() {
 
   return (
     <div className="size-full overflow-hidden bg-background">
-      {selectedStep ? (
+      {selectedStep || selectedReplay ? (
         <ResizablePanelGroup orientation="horizontal" className="size-full">
           <ResizablePanel defaultSize="60%" minSize="30%">
             <LogsPanel
               runs={visibleRuns}
-              selectedStep={selectedStep}
+              selectedSelection={selectedStep || selectedReplay}
               onToggleStep={handleToggleStep}
+              onToggleReplay={handleToggleReplay}
               onClear={handleClear}
             />
           </ResizablePanel>
           <ResizableHandle withHandle />
           <ResizablePanel defaultSize="40%" minSize="25%">
             <InspectorPanel
-              step={selectedStep.step}
+              step={selectedStep?.step}
+              sessionId={selectedReplay?.sessionId}
               onClose={handleCloseInspector}
             />
           </ResizablePanel>
@@ -75,8 +95,9 @@ export function ConsolePanel() {
       ) : (
         <LogsPanel
           runs={visibleRuns}
-          selectedStep={null}
+          selectedSelection={null}
           onToggleStep={handleToggleStep}
+          onToggleReplay={handleToggleReplay}
           onClear={handleClear}
         />
       )}
