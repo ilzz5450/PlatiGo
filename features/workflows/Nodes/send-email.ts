@@ -17,12 +17,18 @@ export async function sendEmail({
   subject: string
   body: string
 }) {
+  const from = process.env.RESEND_FROM_EMAIL?.trim() || "onboarding@resend.dev"
+  if (!to.trim()) throw new Error("Send Email: recipient is required")
+  if (!subject.trim()) throw new Error("Send Email: subject is required")
+  if (!body.trim()) throw new Error("Send Email: body is required")
+
   const { data, error } = await resend.emails.send({
-    from: "onboarding@resend.dev",
+    from,
     to,
     subject,
+    text: body,
     html: body,
-  })
+  }, { idempotencyKey: `workflow-email/${to}/${subject}` })
 
   // The Resend SDK returns { data, error } and does not throw on API errors.
   // Throw so the run marks this step failed instead of looking successful.
@@ -30,6 +36,6 @@ export async function sendEmail({
     throw new Error(error?.message ?? "Resend returned no email id")
   }
 
-  return { id: data.id }
+  return { id: data.id, to, subject }
 }
 

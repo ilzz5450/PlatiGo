@@ -10,6 +10,7 @@ import { useRealtimeRunsWithTag } from "@trigger.dev/react-hooks";
 
 import type { runWorkflowTask } from "@/features/workflows/tasks/run-workflow";
 import type { RunStep } from "@/features/workflows/tasks/run-workflow";
+import type { ExecutionResult } from "@/features/workflows/lib/execution-result";
 
 // Statuses that mean the run is still in flight (live) vs finished. "Live"
 // covers waiting-to-run and actively-executing runs.
@@ -26,6 +27,8 @@ export type WorkflowRun = {
   steps: RunStep[];
   sessionId?: string;
   error?: string;
+  finalResult?: ExecutionResult;
+  deliveredViaEmail: boolean;
 };
 
 export type WorkflowRunsContextValue = {
@@ -83,6 +86,10 @@ export function WorkflowRunsProvider({
         (run.metadata?.steps as RunStep[] | undefined) ??
         [];
       const sessionId = (run.output as { sessionId?: string } | undefined)?.sessionId;
+      const finalResult = (run.output as { finalResult?: ExecutionResult } | undefined)?.finalResult;
+      const deliveredViaEmail = Boolean(
+        (run.output as { deliveredViaEmail?: boolean } | undefined)?.deliveredViaEmail
+      );
 
       const startedAt = run.startedAt ? new Date(run.startedAt) : undefined;
       const finishedAt = run.finishedAt ? new Date(run.finishedAt) : undefined;
@@ -111,6 +118,8 @@ export function WorkflowRunsProvider({
         steps: preferredSteps,
         sessionId,
         error,
+        finalResult,
+        deliveredViaEmail,
       };
     });
 

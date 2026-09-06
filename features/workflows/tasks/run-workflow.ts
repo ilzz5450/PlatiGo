@@ -10,6 +10,7 @@ import { getWorkflow } from "@/features/workflows/data"
 import { interpolate, type NodeOutputs } from "@/features/workflows/lib/interpolate"
 import { nodeExecutors, type NodeExecutor } from "@/features/workflows/Nodes/node-exe"
 import type { NodeType } from "@/features/workflows/Nodes/node-registry"
+import type { ExecutionResult, ExecutionTimelineEvent } from "@/features/workflows/lib/execution-result"
 
 function getErrorDetails(error: unknown): Record<string, string | undefined> {
   if (!(error instanceof Error)) {
@@ -36,6 +37,23 @@ function getErrorMessage(error: unknown): string {
   }
 
   return details.join(" -> ") || String(error)
+}
+
+type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue }
+
+function toJsonValue(value: unknown): JsonValue {
+  if (value === undefined) return null
+  try {
+    return JSON.parse(JSON.stringify(value)) as JsonValue
+  } catch {
+    return String(value)
+  }
 }
 
 // The Node<->Browserbase CDP link is a WebSocket; when it drops mid-navigation
@@ -77,8 +95,9 @@ export type RunStep = {
   startedAt?: number
   finishedAt?: number
   durationMs?: number
-  output?: any
+  output?: JsonValue
   error?: string
+  timeline?: ExecutionTimelineEvent[]
 }
 
 export const runWorkflowTask = task({
@@ -174,7 +193,7 @@ export const runWorkflowTask = task({
       step.status = "done"
       step.finishedAt = Date.now()
       step.durationMs = step.startedAt ? step.finishedAt - step.startedAt : 0
-      step.output = output
+      step.output = toJsonValue(output)
       publishSteps()
       return step
     }
@@ -191,6 +210,22 @@ export const runWorkflowTask = task({
       step.error = getErrorMessage(error)
       publishSteps()
       return step
+    }
+
+    const reportStepEvent = async (
+      nodeId: string,
+      event: Omit<ExecutionTimelineEvent, "id" | "timestamp">
+    ) => {
+      const step = steps.find((item) => item.nodeId === nodeId)
+      if (!step) return
+      step.timeline ??= []
+      step.timeline.push({
+        ...event,
+        id: crypto.randomUUID(),
+        timestamp: Date.now(),
+      })
+      publishSteps()
+      await metadata.flush()
     }
 
     publishSteps()
@@ -225,19 +260,19 @@ export const runWorkflowTask = task({
           browserbaseSessionId: sessionId,
         })
 
-        const modelApiKey = process.env.OPENAI_API_KEY?.trim()
+        const modelApiKey = process.env.GEMINI_API_KEY?.trim()
+        const modelName = process.env.GEMINI_MODEL?.trim() || "gemini-3.6-flash"
+        const stagehandModel = modelApiKey
+          ? ({
+              modelName: `google/${modelName}`,
+              apiKey: modelApiKey,
+            } as Parameters<typeof Stagehand.create>[0]["model"])
+          : undefined
 
         stagehand = await Stagehand.create({
           browser,
           logging: { level: "off" },
-          ...(modelApiKey
-            ? {
-                model: {
-                  modelName: "openai/gpt-4o-mini",
-                  apiKey: modelApiKey,
-                },
-              }
-            : {}),
+          ...(stagehandModel ? { model: stagehandModel } : {}),
         })
       } catch (error) {
         logger.error("Browserbase session failed to start", {
@@ -263,12 +298,17 @@ export const runWorkflowTask = task({
     const MAX_EXECUTOR_ATTEMPTS = 1
     const runExecutorWithRetry = async (
       executor: NodeExecutor,
-      values: Record<string, string>
+      values: Record<string, string>,
+      nodeId: string
     ): Promise<unknown> => {
       let lastError: unknown
       for (let attempt = 1; attempt <= MAX_EXECUTOR_ATTEMPTS; attempt++) {
         try {
-          return await executor({ values, getStagehand })
+          return await executor({
+            values,
+            getStagehand,
+            report: (event) => reportStepEvent(nodeId, event),
+          })
         } catch (error) {
           lastError = error
           if (!isTransportError(error) || attempt === MAX_EXECUTOR_ATTEMPTS) {
@@ -325,7 +365,8 @@ export const runWorkflowTask = task({
           try {
             const output = await runExecutorWithRetry(
               executor,
-              values
+              values,
+              node.id
             )
             nodeOutputs[node.id] = output
             setStepDone(node.id, output)
@@ -347,9 +388,34 @@ export const runWorkflowTask = task({
       await browser?.close()
     }
 
+    const emailDelivered = steps.some(
+      (step) => step.nodeType === "send-email" && step.status === "done"
+    )
+    const finalOutput = [...orderedNodeIds]
+      .reverse()
+      .map((nodeId) => nodeOutputs[nodeId])
+      .find((output) => {
+        if (!output || typeof output !== "object") return typeof output === "string"
+        return typeof (output as { result?: unknown }).result === "string"
+      })
+    const finalResult =
+      typeof finalOutput === "string"
+        ? {
+            status: "success" as const,
+            result: finalOutput,
+            format: "text" as const,
+            sources: [],
+            artifacts: [],
+            executionTime: 0,
+            timeline: [],
+          }
+        : (finalOutput as ExecutionResult | undefined)
+
     return {
       steps,
       sessionId,
+      finalResult,
+      deliveredViaEmail: emailDelivered,
     }
   },
 })

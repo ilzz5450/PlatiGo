@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { deleteWorkflowAction, runWorkflowAction } from "@/features/workflows/actions"
 import { toast } from "sonner"
-import { LoaderCircle, MoreHorizontal, Play, Sparkles, Trash2 } from "lucide-react"
+import { Check, Clipboard, Download, LoaderCircle, MoreHorizontal, Play, Sparkles, Trash2 } from "lucide-react"
 import { validateGraph } from "@/features/workflows/lib/graph-validation"
 import { useReactFlow } from "@xyflow/react"
 
@@ -39,6 +39,7 @@ import {
 import { NodeIcon } from "@/features/workflows/components/node-icon"
 import { useWorkflowFlow } from "@/features/workflows/components/workflow-flow"
 import { useUpstreamConnections } from "@/features/workflows/hooks/use-upstream-connections"
+import { useWorkflowRuns } from "@/features/workflows/components/workflow-runs-provider"
 
 // A titled, scrollable panel. Each tab renders its content inside one. for the workflow 
 function Section({
@@ -197,29 +198,22 @@ const definitions = Object.values(nodeRegistry)
 
 
 function Palette({ workflowId }: { workflowId: string }) {
-  const { addStepNode, applyWorkflowGraph, edges, nodes, removeStepNode, isBuilding, setIsBuilding } = useWorkflowFlow()
+  const { addStepNode, applyWorkflowGraph, isBuilding, setIsBuilding } = useWorkflowFlow()
   const [prompt, setPrompt] = useState("")
 
   const buildWorkflow = async () => {
     if (!prompt.trim() || isBuilding) return
     setIsBuilding(true)
     try {
-      const seededOpenUrlId = "open-url"
-      const graphWithoutSeededOpenUrl = {
-        nodes: (nodes ?? []).filter((node) => node.id !== seededOpenUrlId),
-        edges: (edges ?? []).filter(
-          (edge) => edge.source !== seededOpenUrlId && edge.target !== seededOpenUrlId
-        ),
-      }
-
-      if ((nodes ?? []).some((node) => node.id === seededOpenUrlId)) {
-        removeStepNode(seededOpenUrlId)
-      }
+      // A build prompt always starts a fresh workflow. Clear both nodes and
+      // edges before asking Gemini so stale canvas state cannot leak into the
+      // generated graph or remain visible while it is being built.
+      applyWorkflowGraph({ nodes: [], edges: [] })
 
       const response = await fetch(`/api/workflows/${workflowId}/build`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, graph: graphWithoutSeededOpenUrl }),
+        body: JSON.stringify({ prompt, graph: { nodes: [], edges: [] } }),
       })
       const result = await response.json()
       if (!response.ok) throw new Error(result.error ?? "Could not build workflow")
@@ -333,6 +327,89 @@ function ActionsMenu({ workflowId }: { workflowId: string }) {
   )
 }
 
+function ResultsPanel() {
+  const { latestRun } = useWorkflowRuns()
+  const [copied, setCopied] = useState(false)
+  const finalResult = latestRun?.finalResult
+  const resultText = finalResult?.result ?? ""
+
+  const copyResult = async () => {
+    if (!resultText) return
+    await navigator.clipboard.writeText(resultText)
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 1500)
+  }
+
+  const downloadResult = () => {
+    if (!resultText) return
+    const blob = new Blob([resultText], { type: "text/markdown;charset=utf-8" })
+    const link = document.createElement("a")
+    link.href = URL.createObjectURL(blob)
+    link.download = "platigo-result.md"
+    link.click()
+    URL.revokeObjectURL(link.href)
+  }
+
+  if (!latestRun) {
+    return <p className="p-3 text-xs text-muted-foreground">Run a workflow to see results here.</p>
+  }
+
+  return (
+    <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
+      <div className="flex items-center justify-between border-b border-border/50 pb-2 text-xs">
+        <span className="font-medium">Latest run</span>
+        <span className="text-muted-foreground">{latestRun.status}</span>
+      </div>
+      {!finalResult ? (
+        <p className="text-xs text-muted-foreground">
+          {latestRun.isLive ? "The workflow is still running." : "No result was produced."}
+        </p>
+      ) : (
+        <>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold">Final result</span>
+            <div className="flex items-center gap-1">
+              <Button type="button" variant="ghost" size="icon" className="size-6" onClick={() => void copyResult()} title="Copy result">
+                {copied ? <Check className="size-3.5 text-emerald-500" /> : <Clipboard className="size-3.5" />}
+              </Button>
+              <Button type="button" variant="ghost" size="icon" className="size-6" onClick={downloadResult} title="Download result">
+                <Download className="size-3.5" />
+              </Button>
+            </div>
+          </div>
+          <pre className="max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-md border border-border bg-muted/40 p-2 font-mono text-[11px]">
+            {resultText}
+          </pre>
+          <div className="text-[11px] text-muted-foreground">
+            {latestRun.deliveredViaEmail ? "Result delivered via Email." : "Result available here."}
+          </div>
+          {finalResult.sources.length > 0 && (
+            <div className="space-y-1 border-t border-border/40 pt-2">
+              <div className="text-xs font-semibold">Sources</div>
+              {finalResult.sources.map((source) => (
+                <a key={source} href={source} target="_blank" rel="noreferrer" className="block truncate text-[11px] text-primary underline">
+                  {source}
+                </a>
+              ))}
+            </div>
+          )}
+          {finalResult.timeline.length > 0 && (
+            <div className="space-y-1 border-t border-border/40 pt-2">
+              <div className="text-xs font-semibold">Timeline</div>
+              {finalResult.timeline.map((event) => (
+                <div key={event.id} className="flex gap-1.5 text-[11px] text-muted-foreground">
+                  <span>{event.status === "success" ? "[ok]" : event.status === "warning" ? "[!]" : "[-]"}</span>
+                  <span>{event.message}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 // starts of a Go of the current workflow.
 function RunButton({ workflowId }: { workflowId: string }) {
   const { getNodes, getEdges } = useReactFlow<StepNodeType>()
@@ -411,12 +488,21 @@ export function RightSidebar({ workflowId }: { workflowId: string }) {
           >
             Edit Panel
           </TabsTrigger>
+          <TabsTrigger
+            value="results"
+            className="flow-panel-3d flex-none rounded-sm data-active:bg-accent! data-active:text-accent-foreground! data-active:shadow-none! dark:data-active:border-transparent!"
+          >
+            Results
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="toolbar" className="flex min-h-0 flex-col">
           <Palette workflowId={workflowId} />
         </TabsContent>
         <TabsContent value="editor" className="flex min-h-0 flex-col">
           <Inspector node={selectedNode} />
+        </TabsContent>
+        <TabsContent value="results" className="flex min-h-0 flex-1 flex-col">
+          <ResultsPanel />
         </TabsContent>
       </Tabs>
     </ResizablePanel>

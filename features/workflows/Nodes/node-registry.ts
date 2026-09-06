@@ -6,6 +6,7 @@ import {
   FileSearch,
   ScanEye,
   Sparkles,
+  Bot,
   Mail,
   type LucideIcon,
 } from "lucide-react"
@@ -125,7 +126,25 @@ export const nodeRegistry = {
       { path: "success", label: "Success" },
       { path: "message", label: "Message" },
       { path: "completed", label: "Completed" },
+      { path: "result", label: "Result" },
+      { path: "url", label: "Final URL" },
     ],
+  },
+  "ai-prompt": {
+    type: "ai-prompt",
+    kind: "action",
+    label: "Gemini Prompt",
+    icon: Bot,
+    accent: "bg-violet-500 text-white",
+    fields: [
+      {
+        key: "prompt",
+        label: "Prompt",
+        placeholder: "Summarize {{ agent.result }} in five bullet points",
+        multiline: true,
+      },
+    ],
+    outputs: [{ path: "result", label: "Result" }, { path: "model", label: "Model" }],
   },
   "send-email": {
     type: "send-email",

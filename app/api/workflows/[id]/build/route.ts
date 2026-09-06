@@ -37,7 +37,7 @@ async function getGeminiModel(apiKey: string) {
   const payload = (await response.json()) as {
     models?: { name?: string; supportedGenerationMethods?: string[] }[]
   }
-  const preferredModels = ["gemini-3.6-flash", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
+  const preferredModels = ["gemini-3.6-flash"]
   const availableModels = (payload.models ?? [])
     .filter((model) => model.supportedGenerationMethods?.includes("generateContent"))
     .map((model) => model.name?.replace(/^models\//, ""))

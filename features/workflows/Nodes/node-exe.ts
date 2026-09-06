@@ -10,11 +10,17 @@ import { extract } from "./extract"
 import { observation } from "./observation"
 import { openUrl } from "./open-url"
 import { sendEmail } from "./send-email"
+import { aiPrompt } from "./ai-prompt"
 
 
 export type NodeContext = {
   values: Record<string, string>
   getStagehand: () => Promise<Stagehand>
+  report?: (event: {
+    status: "running" | "success" | "warning" | "failed"
+    message: string
+    retryCount?: number
+  }) => void | Promise<void>
 }
 
 export type NodeExecutor = (ctx: NodeContext) => Promise<unknown>
@@ -37,11 +43,14 @@ export const nodeExecutors: Partial<Record<NodeType, NodeExecutor>> = {
       stagehand: await getStagehand(),
       instruction: values.instruction ?? "",
     }),
-  agent: async ({ values, getStagehand }) =>
+  agent: async ({ values, getStagehand, report }) =>
     agent({
       stagehand: await getStagehand(),
       instruction: values.instruction ?? "",
+      report,
     }),
+  "ai-prompt": async ({ values }) =>
+    aiPrompt({ prompt: values.prompt ?? "" }),
   "send-email": async ({ values }) =>
     sendEmail({
       to: values.to ?? "",
