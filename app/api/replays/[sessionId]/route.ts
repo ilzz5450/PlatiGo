@@ -33,7 +33,9 @@ export async function GET(
 
   try {
     const replay = await browserbase.sessions.replays.retrieve(sessionId)
-    const page = replay.pages.find((candidate) => candidate.pageId === pageId)
+    const page =
+      replay.pages.find((candidate) => candidate.pageId === pageId) ??
+      replay.pages[0]
 
     if (!page) {
       return Response.json(

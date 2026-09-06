@@ -254,8 +254,13 @@ export const runWorkflowTask = task({
         browser = await browserbase.launch({
           apiKey,
           ...(projectId ? { projectId } : {}),
+          browserSettings: {
+            recordSession: true,
+          },
         })
         sessionId = browser.sessionId
+        if (sessionId) metadata.set("browserbaseSessionId", sessionId)
+        await metadata.flush()
         logger.log("Browserbase session started", {
           browserbaseSessionId: sessionId,
         })
@@ -384,8 +389,22 @@ export const runWorkflowTask = task({
         }
       }
     } finally {
-      await stagehand?.close()
-      await browser?.close()
+      // Browserbase replay data is finalized asynchronously. Cleanup errors
+      // must never replace a successful workflow result or hide its session ID.
+      try {
+        await stagehand?.close()
+      } catch (error) {
+        logger.warn("Stagehand cleanup failed after workflow completion", {
+          cleanupError: getErrorDetails(error),
+        })
+      }
+      try {
+        await browser?.close()
+      } catch (error) {
+        logger.warn("Browserbase cleanup failed after workflow completion", {
+          cleanupError: getErrorDetails(error),
+        })
+      }
     }
 
     const emailDelivered = steps.some(
