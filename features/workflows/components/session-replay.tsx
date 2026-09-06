@@ -18,7 +18,6 @@ export function SessionReplay({
 }: SessionReplayProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const hlsRef = useRef<Hls | null>(null)
-  const sourceUrlRef = useRef<string | null>(null)
   const [status, setStatus] = useState<"waiting" | "loading" | "ready" | "error">("waiting")
   const [error, setError] = useState<string>()
 
@@ -32,10 +31,6 @@ export function SessionReplay({
     const cleanupPlayer = () => {
       hlsRef.current?.destroy()
       hlsRef.current = null
-      if (sourceUrlRef.current) {
-        URL.revokeObjectURL(sourceUrlRef.current)
-        sourceUrlRef.current = null
-      }
       video.removeAttribute("src")
       video.load()
     }
@@ -60,13 +55,8 @@ export function SessionReplay({
         }
 
         setStatus("loading")
-        const playlist = await response.text()
+        await response.text()
         if (cancelled) return
-
-        const source = URL.createObjectURL(
-          new Blob([playlist], { type: "application/vnd.apple.mpegurl" })
-        )
-        sourceUrlRef.current = source
 
         if (Hls.isSupported()) {
           const hls = new Hls()
@@ -80,10 +70,15 @@ export function SessionReplay({
           hls.on(Hls.Events.MANIFEST_PARSED, () => {
             if (!cancelled) setStatus("ready")
           })
-          hls.loadSource(source)
+          // Keep the manifest on the backend route. Browserbase manifests
+          // contain signed media URLs, and a blob URL can cause HLS.js to
+          // resolve those segments against the wrong origin.
+          hls.loadSource(
+            `/api/replays/${encodeURIComponent(sessionId)}?pageId=${encodeURIComponent(pageId)}`
+          )
           hls.attachMedia(video)
         } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-          video.src = source
+          video.src = `/api/replays/${encodeURIComponent(sessionId)}?pageId=${encodeURIComponent(pageId)}`
           video.addEventListener("loadedmetadata", () => {
             if (!cancelled) setStatus("ready")
           }, { once: true })

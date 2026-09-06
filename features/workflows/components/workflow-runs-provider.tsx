@@ -51,6 +51,23 @@ function isRunLive(status: string | undefined): boolean {
   return !!status && LIVE_STATUSES.has(status);
 }
 
+function normalizeFinalResult(value: unknown): ExecutionResult | undefined {
+  if (!value || typeof value !== "object") return undefined
+  const candidate = value as Partial<ExecutionResult>
+  if (typeof candidate.result !== "string") return undefined
+
+  return {
+    status: candidate.status === "failed" || candidate.status === "partial" ? candidate.status : "success",
+    result: candidate.result,
+    format: candidate.format === "json" || candidate.format === "text" ? candidate.format : "markdown",
+    sources: Array.isArray(candidate.sources) ? candidate.sources.filter((item): item is string => typeof item === "string") : [],
+    artifacts: Array.isArray(candidate.artifacts) ? candidate.artifacts.filter((item): item is string => typeof item === "string") : [],
+    executionTime: typeof candidate.executionTime === "number" ? candidate.executionTime : 0,
+    timeline: Array.isArray(candidate.timeline) ? candidate.timeline : [],
+    url: typeof candidate.url === "string" ? candidate.url : undefined,
+  }
+}
+
 // A single shared realtime subscription to this workflow's runs (by their
 // `workflow:<id>` tag). Any component under this provider can read all runs
 // and steps via `useWorkflowRuns`, or the latest run's step progress via `useLatestRunSteps`.
@@ -86,7 +103,9 @@ export function WorkflowRunsProvider({
         (run.metadata?.steps as RunStep[] | undefined) ??
         [];
       const sessionId = (run.output as { sessionId?: string } | undefined)?.sessionId;
-      const finalResult = (run.output as { finalResult?: ExecutionResult } | undefined)?.finalResult;
+      const finalResult = normalizeFinalResult(
+        (run.output as { finalResult?: unknown } | undefined)?.finalResult
+      );
       const deliveredViaEmail = Boolean(
         (run.output as { deliveredViaEmail?: boolean } | undefined)?.deliveredViaEmail
       );
