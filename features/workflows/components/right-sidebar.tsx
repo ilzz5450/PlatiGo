@@ -2,9 +2,9 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { deleteWorkflowAction, runWorkflowAction } from "@/features/workflows/actions"
+import { cancelWorkflowRun, deleteWorkflowAction, runWorkflowAction } from "@/features/workflows/actions"
 import { toast } from "sonner"
-import { Check, Clipboard, Download, LoaderCircle, MoreHorizontal, Play, Sparkles, Trash2 } from "lucide-react"
+import { Check, Clipboard, Download, LoaderCircle, MoreHorizontal, Play, Sparkles, Square, Trash2 } from "lucide-react"
 import { validateGraph } from "@/features/workflows/lib/graph-validation"
 import { useReactFlow } from "@xyflow/react"
 
@@ -413,11 +413,39 @@ function ResultsPanel() {
 // starts of a Go of the current workflow.
 function RunButton({ workflowId }: { workflowId: string }) {
   const { getNodes, getEdges } = useReactFlow<StepNodeType>()
+  const { latestRun } = useWorkflowRuns()
   const [isRunning, setIsRunning] = useState(false)
+  const [runId, setRunId] = useState<string>()
+  const [isStopping, setIsStopping] = useState(false)
+
+  const runIsLive =
+    isRunning &&
+    (!runId || latestRun?.id !== runId || latestRun.isLive)
+
+  const handleStop = async () => {
+    if (isStopping) return
+    if (!runId) {
+      setIsRunning(false)
+      return
+    }
+
+    setIsStopping(true)
+    try {
+      await cancelWorkflowRun({ workflowId, runId })
+      setIsRunning(false)
+      toast.success("Workflow stopped")
+    } catch (error) {
+      console.error("Failed to stop workflow:", error)
+      toast.error(error instanceof Error ? error.message : "Failed to stop workflow")
+    } finally {
+      setIsStopping(false)
+    }
+  }
 
   const handleRun = async () => {
-    if (isRunning) return
+    if (runIsLive) return
     setIsRunning(true)
+    setRunId(undefined)
     try {
       const nodes = getNodes()
       const edges = getEdges()
@@ -432,12 +460,12 @@ function RunButton({ workflowId }: { workflowId: string }) {
         return
       }
 
-      await runWorkflowAction({ id: workflowId, graph })
+      const handle = await runWorkflowAction({ id: workflowId, graph })
+      setRunId(handle.id)
       toast.success("Workflow triggered successfully on Trigger.dev!")
     } catch (error) {
       console.error("Failed to run workflow:", error)
       toast.error(error instanceof Error ? error.message : "Failed to run workflow")
-    } finally {
       setIsRunning(false)
     }
   }
@@ -447,11 +475,11 @@ function RunButton({ workflowId }: { workflowId: string }) {
       size="sm"
       variant="secondary"
       className="flow-gpo-3d"
-      disabled={isRunning}
-      onClick={() => void handleRun()}
+      disabled={isStopping}
+      onClick={() => void (runIsLive ? handleStop() : handleRun())}
     >
-      <Play fill="currentColor" />
-      {isRunning ? "Running..." : "Run"}
+      {runIsLive ? <Square fill="currentColor" /> : <Play fill="currentColor" />}
+      {runIsLive ? (isStopping ? "Stopping..." : "Stop") : "Run"}
     </Button>
   )
 }

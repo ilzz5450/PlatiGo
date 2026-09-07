@@ -1,11 +1,11 @@
 "use server"
 
 import { auth } from "@clerk/nextjs/server"
-import { deleteWorkflow, createWorkflow, saveWorkflowGraph } from "@/features/workflows/data"
+import { deleteWorkflow, createWorkflow, getWorkflow, saveWorkflowGraph } from "@/features/workflows/data"
 import { liveblocks } from "@/lib/liveblocks"
 import { revalidatePath } from "next/cache"
 import type { WorkflowGraph } from "@/lib/db/schema"
-import { tasks } from "@trigger.dev/sdk"
+import { runs, tasks } from "@trigger.dev/sdk"
 import type { runWorkflowTask } from "@/features/workflows/tasks/run-workflow"
 
 // Server action to create a workflow
@@ -67,4 +67,31 @@ export async function runWorkflowAction({
   })
 
   return handle
+}
+
+export async function cancelWorkflowRun({
+  workflowId,
+  runId,
+}: {
+  workflowId: string
+  runId: string
+}) {
+  const { orgId } = await auth()
+  if (!orgId) {
+    throw new Error("Unauthorized: No organization selected")
+  }
+
+  const [workflow] = await getWorkflow(orgId, workflowId)
+  if (!workflow) {
+    throw new Error("Workflow not found or unauthorized")
+  }
+
+  const run = await runs.retrieve(runId)
+  const tags = (run as { tags?: unknown }).tags
+  if (!Array.isArray(tags) || !tags.includes(`workflow:${workflowId}`)) {
+    throw new Error("Run does not belong to this workflow")
+  }
+
+  await runs.cancel(runId)
+  return { success: true }
 }
