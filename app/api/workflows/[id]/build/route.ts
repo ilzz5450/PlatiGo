@@ -9,56 +9,19 @@ type BuildRequest = {
   graph?: { nodes?: StepNodeType[]; edges?: Edge[] }
 }
 
-const nodeManifest = Object.values(nodeRegistry).map((definition) => ({
-  type: definition.type,
-  kind: definition.kind,
-  label: definition.label,
-  fields: definition.fields,
-  outputs: definition.outputs,
-}))
-
-function parseModelJson(text: string) {
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i)?.[1]
-  return JSON.parse(fenced ?? text)
-}
-
-async function getGeminiModel(apiKey: string) {
-  const configuredModel = process.env.GEMINI_MODEL?.trim()
-  if (configuredModel) return configuredModel.replace(/^models\//, "")
-
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`
-  )
-  if (!response.ok) {
-    const detail = await response.text()
-    throw new Error(`Gemini model discovery failed (${response.status}): ${detail}`)
-  }
-
-  const payload = (await response.json()) as {
-    models?: { name?: string; supportedGenerationMethods?: string[] }[]
-  }
-  const preferredModels = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-1.5-pro", "gemini-3.6-flash"]
-  const availableModels = (payload.models ?? [])
-    .filter((model) => model.supportedGenerationMethods?.includes("generateContent"))
-    .map((model) => model.name?.replace(/^models\//, ""))
-    .filter((model): model is string => Boolean(model))
-
-  return preferredModels.find((model) => availableModels.includes(model)) ?? (availableModels[0] || "gemini-2.5-flash")
-}
-
 function normalizeGraph(value: unknown) {
-  if (!value || typeof value !== "object") throw new Error("Gemini returned an invalid workflow")
+  if (!value || typeof value !== "object") throw new Error("Invalid workflow graph")
 
   const result = value as { nodes?: unknown; edges?: unknown }
   if (!Array.isArray(result.nodes) || !Array.isArray(result.edges)) {
-    throw new Error("Gemini must return nodes and edges arrays")
+    throw new Error("Workflow must return nodes and edges arrays")
   }
 
   const nodes: StepNodeType[] = result.nodes.map((rawNode, index) => {
     const node = rawNode as Partial<StepNodeType> & { data?: Partial<StepNodeType["data"]> }
     const type = node.data?.type as NodeType
     const definition = nodeRegistry[type]
-    if (!definition) throw new Error(`Gemini returned unsupported node type at index ${index}`)
+    if (!definition) throw new Error(`Unsupported node type at index ${index}`)
 
     return {
       id: typeof node.id === "string" && node.id ? node.id : crypto.randomUUID(),
@@ -80,7 +43,7 @@ function normalizeGraph(value: unknown) {
   const edges: Edge[] = result.edges.map((rawEdge, index) => {
     const edge = rawEdge as Partial<Edge>
     if (typeof edge.source !== "string" || typeof edge.target !== "string" || !nodeIds.has(edge.source) || !nodeIds.has(edge.target)) {
-      throw new Error(`Gemini returned an edge with an unknown node at index ${index}`)
+      throw new Error(`Edge references unknown node at index ${index}`)
     }
     return {
       id: typeof edge.id === "string" && edge.id ? edge.id : `e-${edge.source}-${edge.target}-${index}`,
@@ -97,6 +60,101 @@ function normalizeGraph(value: unknown) {
   return graph
 }
 
+// 100% Local Rule-Based Intent Parser — Zero Gemini / LLM Cost!
+function buildGraphLocally(prompt: string) {
+  const p = prompt.toLowerCase()
+  const nodes: StepNodeType[] = []
+  const edges: Edge[] = []
+
+  // 1. Always start with Go
+  const startId = "start"
+  nodes.push({
+    id: startId,
+    type: "step",
+    position: { x: 0, y: 0 },
+    data: { type: "start", kind: "trigger", title: "Go", values: {} },
+  })
+
+  let lastNodeId = startId
+
+  // Helper to append a node and connect it
+  const addNode = (type: NodeType, title: string, values: Record<string, string>) => {
+    const id = crypto.randomUUID()
+    const x = nodes.length * 260
+    nodes.push({
+      id,
+      type: "step",
+      position: { x, y: 0 },
+      data: { type, kind: nodeRegistry[type].kind, title, values },
+    })
+    edges.push({
+      id: `e-${lastNodeId}-${id}`,
+      source: lastNodeId,
+      target: id,
+      type: "smoothstep",
+      animated: true,
+    })
+    lastNodeId = id
+    return id
+  }
+
+  // 2. URL detection or default web target
+  let targetUrl = "https://example.com"
+  if (p.includes("hacker news") || p.includes("ycombinator")) {
+    targetUrl = "https://news.ycombinator.com"
+  } else if (p.includes("youtube")) {
+    targetUrl = "https://youtube.com"
+  } else if (p.includes("google")) {
+    targetUrl = "https://google.com"
+  } else {
+    const urlMatch = prompt.match(/https?:\/\/[^\s]+/i)
+    if (urlMatch) targetUrl = urlMatch[0]
+  }
+
+  addNode("open-url", "Open URL", { url: targetUrl })
+
+  // 3. Browser Agent (iluzzio) or Act if requested
+  if (p.includes("agent") || p.includes("search") || p.includes("find") || p.includes("scroll") || p.includes("navigate")) {
+    addNode("agent", "iluzzio(Agent)", { instruction: prompt })
+  }
+
+  // 4. Extraction / Scrapling
+  if (p.includes("extract") || p.includes("scrape") || p.includes("title") || p.includes("price") || p.includes("stories") || p.includes("data")) {
+    addNode("extract", "Scrapling Extract", { instruction: prompt })
+  }
+
+  // 5. DataNaut (CSV / Excel)
+  if (p.includes("csv") || p.includes("excel") || p.includes("datanaut") || p.includes("spreadsheet")) {
+    addNode("datanaut", "DataNaut", {
+      dataInput: `{{ ${lastNodeId}.result }}`,
+      actionType: "download-csv",
+    })
+  }
+
+  // 6. PDF Generator
+  if (p.includes("pdf") || p.includes("document") || p.includes("report")) {
+    addNode("pdf", "PDF Generator", {
+      content: `{{ ${lastNodeId}.result }}`,
+    })
+  }
+
+  // 7. Send Email
+  if (p.includes("email") || p.includes("mail") || p.includes("send")) {
+    addNode("send-email", "Send Email", {
+      to: "user@example.com",
+      subject: "Automated Report from Platigo",
+      body: `Here is the ordered result:\n\n{{ ${lastNodeId}.result }}`,
+    })
+  }
+
+  // Fallback if prompt was generic
+  if (nodes.length === 2) {
+    addNode("extract", "Scrapling Extract", { instruction: prompt })
+  }
+
+  return normalizeGraph({ nodes, edges })
+}
+
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { orgId } = await auth()
   if (!orgId) return Response.json({ error: "Unauthorized" }, { status: 401 })
@@ -105,54 +163,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const workflow = await getWorkflow(orgId, id)
   if (!workflow[0]) return Response.json({ error: "Workflow not found" }, { status: 404 })
 
-  const apiKey = process.env.GEMINI_API_KEY
-  if (!apiKey) return Response.json({ error: "GEMINI_API_KEY is not configured" }, { status: 503 })
-
   const body = (await request.json()) as BuildRequest
   const prompt = body.prompt?.trim()
   if (!prompt) return Response.json({ error: "Enter a workflow prompt" }, { status: 400 })
 
-  const currentGraph = body.graph ?? { nodes: [], edges: [] }
-  const instruction = `You are the workflow builder for PlatiGo. Build a complete executable workflow from the user's request.
-
-Available node definitions (use only these types and their fields):
-${JSON.stringify(nodeManifest, null, 2)}
-
-Return JSON only in this exact shape: {"nodes":[{"id":"...","type":"step","position":{"x":0,"y":0},"data":{"type":"...","kind":"trigger|action","title":"...","values":{"field":"value"}}}],"edges":[{"id":"...","source":"node-id","target":"node-id","type":"smoothstep","animated":true}]}
-
-Rules: include exactly one Go node with data.type start; connect every executable step in logical order; use {{ node-id.path }} tokens when a later field needs an upstream output; position nodes left-to-right with about 260px between steps; never invent node types or fields. You may replace or improve the current graph.
-
-Current graph:
-${JSON.stringify(currentGraph, null, 2)}
-
-User request:
-${prompt}`
-
   try {
-    const model = await getGeminiModel(apiKey)
-    if (!model) throw new Error("Gemini returned no model that supports generateContent")
-
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: instruction }] }],
-        generationConfig: { responseMimeType: "application/json", temperature: 0.2 },
-      }),
-    })
-
-    if (!response.ok) {
-      const detail = await response.text()
-      throw new Error(`Gemini request failed (${response.status}): ${detail}`)
-    }
-    const payload = await response.json()
-    const text = payload.candidates?.[0]?.content?.parts?.[0]?.text
-    if (typeof text !== "string") throw new Error("Gemini returned no workflow")
-
-    const graph = normalizeGraph(parseModelJson(text))
+    const graph = buildGraphLocally(prompt)
     return Response.json({ graph })
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Could not build workflow"
+    const message = error instanceof Error ? error.message : "Could not build workflow locally"
     return Response.json({ error: message }, { status: 422 })
   }
 }
