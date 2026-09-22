@@ -1,4 +1,5 @@
 import type { Stagehand } from "@browserbasehq/stagehand"
+import { z } from "zod"
 
 export async function extract({
   stagehand,
@@ -23,45 +24,49 @@ export async function extract({
 
   try {
     const currentUrl = page.url() || ""
-    // Use Playwright/Stagehand page evaluation to get page HTML content for Scrapling-style free extraction
-    const html = await page.evaluate(() => document.documentElement.outerHTML)
 
-    const textChunks = html
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, " ")
-      .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, " ")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/\s+/g, " ")
-      .trim()
+    // Use Stagehand's built-in AI extraction schema to guarantee structured multi-item lists & tables
+    const extractResult = await stagehand.extract(
+      `Extract all relevant items, rows, titles, prices, or structured data matching this request: "${trimmed}". Return them as a clean, structured list or table in text format.`,
+      z.object({
+        result: z.string().describe("The complete multi-item extracted data formatted cleanly in markdown or tables"),
+      })
+    )
 
-    let extractedValue = textChunks.slice(0, 4000)
-    const lowerInst = trimmed.toLowerCase()
+    const rawValue =
+      (extractResult as any)?.data?.result ??
+      (extractResult as any)?.result ??
+      ""
 
-    if (lowerInst.includes("title")) {
-      const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i)
-      if (titleMatch?.[1]) {
-        extractedValue = titleMatch[1].trim()
-      }
-    } else if (lowerInst.includes("price")) {
-      const priceMatch = textChunks.match(/(\$[0-9]+(?:\.[0-9]{2})?)/)
-      if (priceMatch?.[1]) {
-        extractedValue = priceMatch[1]
-      }
-    } else if (lowerInst.includes("email")) {
-      const emailMatch = textChunks.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/)
-      if (emailMatch?.[0]) {
-        extractedValue = emailMatch[0]
-      }
-    }
+    const result =
+      typeof rawValue === "object" ? JSON.stringify(rawValue, null, 2) : String(rawValue)
 
     return {
-      result: extractedValue,
+      result,
       url: currentUrl,
     }
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error)
-    throw new Error(
-      `Extract: failed to extract data using free scraper for "${trimmed}". ${errorMessage}`,
-      { cause: error }
-    )
+    // Fallback to DOM text slicing if Stagehand extract encounters any transient hiccup
+    try {
+      const html = await page.evaluate(() => document.documentElement.outerHTML)
+      const textChunks = html
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, " ")
+        .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, " ")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 5000)
+
+      return {
+        result: textChunks,
+        url: page.url() || "",
+      }
+    } catch (fallbackError) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      throw new Error(
+        `Extract: failed to extract structured data for "${trimmed}". ${errorMessage}`,
+        { cause: fallbackError }
+      )
+    }
   }
 }
