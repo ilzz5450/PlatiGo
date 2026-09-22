@@ -266,7 +266,7 @@ export const runWorkflowTask = task({
         })
 
         const modelApiKey = process.env.GEMINI_API_KEY?.trim()
-        const modelName = process.env.GEMINI_MODEL?.trim() || "gemini-3.6-flash"
+        const modelName = process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash"
         const stagehandModel = modelApiKey
           ? ({
               modelName: `google/${modelName}`,

@@ -37,13 +37,13 @@ async function getGeminiModel(apiKey: string) {
   const payload = (await response.json()) as {
     models?: { name?: string; supportedGenerationMethods?: string[] }[]
   }
-  const preferredModels = ["gemini-3.6-flash"]
+  const preferredModels = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-1.5-pro", "gemini-3.6-flash"]
   const availableModels = (payload.models ?? [])
     .filter((model) => model.supportedGenerationMethods?.includes("generateContent"))
     .map((model) => model.name?.replace(/^models\//, ""))
     .filter((model): model is string => Boolean(model))
 
-  return preferredModels.find((model) => availableModels.includes(model)) ?? availableModels[0]
+  return preferredModels.find((model) => availableModels.includes(model)) ?? (availableModels[0] || "gemini-2.5-flash")
 }
 
 function normalizeGraph(value: unknown) {
