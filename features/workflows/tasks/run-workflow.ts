@@ -265,19 +265,9 @@ export const runWorkflowTask = task({
           browserbaseSessionId: sessionId,
         })
 
-        const modelApiKey = process.env.GEMINI_API_KEY?.trim()
-        const modelName = process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash"
-        const stagehandModel = modelApiKey
-          ? ({
-              modelName: `google/${modelName}`,
-              apiKey: modelApiKey,
-            } as Parameters<typeof Stagehand.create>[0]["model"])
-          : undefined
-
         stagehand = await Stagehand.create({
           browser,
           logging: { level: "off" },
-          ...(stagehandModel ? { model: stagehandModel } : {}),
         })
       } catch (error) {
         logger.error("Browserbase session failed to start", {
