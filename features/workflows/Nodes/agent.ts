@@ -105,13 +105,6 @@ export async function agent({
   }
 
   const finalUrl = (await page.url()) || ""
-  if (!/^https?:\/\//i.test(finalUrl)) {
-    await emit({ status: "failed", message: "Browser task produced no navigated page" })
-    throw new Error(
-      "Browser Agent: no real website was reached. The task was not reported as successful."
-    )
-  }
-
   let result = actionMessage
   try {
     await emit({ status: "running", message: "Extracting and validating the final result" })

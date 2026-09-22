@@ -333,6 +333,18 @@ function ResultsPanel() {
   const finalResult = latestRun?.finalResult
   const resultText = finalResult?.result ?? ""
 
+  // Collect any generated CSV or PDF outputs from completed run steps
+  const steps = latestRun?.steps ?? []
+  const csvOutputs = steps
+    .filter((s) => s.nodeType === "datanaut" && s.status === "done" && s.output && typeof s.output === "object")
+    .map((s) => s.output as { csv?: string; filename?: string })
+    .filter((o) => Boolean(o.csv))
+
+  const pdfOutputs = steps
+    .filter((s) => s.nodeType === "pdf" && s.status === "done" && s.output && typeof s.output === "object")
+    .map((s) => s.output as { pdfUrl?: string })
+    .filter((o) => Boolean(o.pdfUrl))
+
   const copyResult = async () => {
     if (!resultText) return
     await navigator.clipboard.writeText(resultText)
@@ -346,6 +358,23 @@ function ResultsPanel() {
     const link = document.createElement("a")
     link.href = URL.createObjectURL(blob)
     link.download = "platigo-result.md"
+    link.click()
+    URL.revokeObjectURL(link.href)
+  }
+
+  const downloadCsv = (csvContent: string, filename = "platigo-data.csv") => {
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const link = document.createElement("a")
+    link.href = URL.createObjectURL(blob)
+    link.download = filename
+    link.click()
+    URL.revokeObjectURL(link.href)
+  }
+
+  const downloadPdf = (pdfUrl: string) => {
+    const link = document.createElement("a")
+    link.href = pdfUrl
+    link.download = "platigo-report.pdf"
     link.click()
     URL.revokeObjectURL(link.href)
   }
@@ -377,11 +406,47 @@ function ResultsPanel() {
               </Button>
             </div>
           </div>
-          <pre className="max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-md border border-border bg-muted/40 p-2 font-mono text-[11px]">
+          <pre className="max-h-60 overflow-auto whitespace-pre-wrap break-words rounded-md border border-border bg-muted/40 p-2 font-mono text-[11px]">
             {resultText}
           </pre>
+
+          {/* Download CSV / PDF Artifacts Section */}
+          {(csvOutputs.length > 0 || pdfOutputs.length > 0) && (
+            <div className="space-y-2 border-t border-border/40 pt-2">
+              <div className="text-xs font-semibold">Generated Files</div>
+              <div className="flex flex-col gap-1.5">
+                {csvOutputs.map((item, idx) => (
+                  <Button
+                    key={idx}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="justify-start gap-2 text-xs"
+                    onClick={() => downloadCsv(item.csv ?? "", item.filename ?? "data.csv")}
+                  >
+                    <Download className="size-3.5 text-indigo-500" />
+                    Download CSV ({item.filename ?? "report.csv"})
+                  </Button>
+                ))}
+                {pdfOutputs.map((item, idx) => (
+                  <Button
+                    key={idx}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="justify-start gap-2 text-xs"
+                    onClick={() => downloadPdf(item.pdfUrl ?? "")}
+                  >
+                    <Download className="size-3.5 text-orange-500" />
+                    Download PDF Report
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="text-[11px] text-muted-foreground">
-            {latestRun.deliveredViaEmail ? "Result delivered via Email." : "Result available here."}
+            {latestRun.deliveredViaEmail ? "Result delivered via Email with full attachments." : "Result available here."}
           </div>
           {finalResult.sources.length > 0 && (
             <div className="space-y-1 border-t border-border/40 pt-2">

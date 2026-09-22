@@ -40,16 +40,15 @@ export function interpolate({
   return text.replace(PLACEHOLDER, (_match, expr: string) => {
     const path = expr.trim()
     const runtimeValue = getByPath(outputs, path)
-    // An empty-string runtime output (e.g. page.url() coming back "") counts
-    // as "not produced" — fall back to the value the user typed, which is what
-    // the canvas displays and never empty. `??` would let "" through, so use
-    // || deliberately.
-    const value = runtimeValue || staticValues?.[path]
+    const value = runtimeValue !== undefined ? runtimeValue : staticValues?.[path]
     if (value == null) return ""
-    // Arrays and plain objects resolve to "" — JSON-stringifying them produces
-    // unusable text like "{}" or "[1,2]" that downstream fields (URLs, etc.)
-    // can never consume. Primitive values get coerced to string.
-    if (typeof value === "object") return ""
+    if (typeof value === "object") {
+      try {
+        return JSON.stringify(value, null, 2)
+      } catch {
+        return String(value)
+      }
+    }
     return String(value)
   })
 }
