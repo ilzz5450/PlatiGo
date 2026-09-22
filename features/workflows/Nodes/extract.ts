@@ -1,5 +1,4 @@
 import type { Stagehand } from "@browserbasehq/stagehand"
-import { z } from "zod"
 
 export async function extract({
   stagehand,
@@ -24,49 +23,32 @@ export async function extract({
 
   try {
     const currentUrl = page.url() || ""
+    const html = await page.evaluate(() => {
+      // Clean and collect all meaningful text rows and table structures
+      const clone = document.documentElement.cloneNode(true) as HTMLElement
+      const scripts = clone.querySelectorAll("script, style, noscript, iframe")
+      scripts.forEach((el) => el.remove())
+      return clone.innerText || clone.textContent || ""
+    })
 
-    // Use Stagehand's built-in AI extraction schema to guarantee structured multi-item lists & tables
-    const extractResult = await stagehand.extract(
-      `Extract all relevant items, rows, titles, prices, or structured data matching this request: "${trimmed}". Return them as a clean, structured list or table in text format.`,
-      z.object({
-        result: z.string().describe("The complete multi-item extracted data formatted cleanly in markdown or tables"),
-      })
-    )
+    const cleanedText = html
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 3)
+      .slice(0, 80)
+      .join("\n")
 
-    const rawValue =
-      (extractResult as any)?.data?.result ??
-      (extractResult as any)?.result ??
-      ""
-
-    const result =
-      typeof rawValue === "object" ? JSON.stringify(rawValue, null, 2) : String(rawValue)
+    const result = cleanedText || "No content extracted from page."
 
     return {
       result,
       url: currentUrl,
     }
   } catch (error) {
-    // Fallback to DOM text slicing if Stagehand extract encounters any transient hiccup
-    try {
-      const html = await page.evaluate(() => document.documentElement.outerHTML)
-      const textChunks = html
-        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, " ")
-        .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, " ")
-        .replace(/<[^>]+>/g, " ")
-        .replace(/\s+/g, " ")
-        .trim()
-        .slice(0, 5000)
-
-      return {
-        result: textChunks,
-        url: page.url() || "",
-      }
-    } catch (fallbackError) {
-      const errorMessage = error instanceof Error ? error.message : String(error)
-      throw new Error(
-        `Extract: failed to extract structured data for "${trimmed}". ${errorMessage}`,
-        { cause: fallbackError }
-      )
-    }
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    throw new Error(
+      `Extract: failed to extract data from page for "${trimmed}". ${errorMessage}`,
+      { cause: error }
+    )
   }
 }

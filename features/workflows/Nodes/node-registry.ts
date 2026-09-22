@@ -159,19 +159,19 @@ export const nodeRegistry = {
   pdf: {
     type: "pdf",
     kind: "action",
-    label: "PDF Generator",
+    label: "Docs Node",
     icon: FileText,
     accent: "bg-orange-500 text-white",
     fields: [
       {
         key: "content",
-        label: "Content to Convert",
+        label: "Content to Document",
         placeholder: "Reference upstream result {{ agent.result }}",
         multiline: true,
       },
     ],
     outputs: [
-      { path: "pdfUrl", label: "PDF Download URL" },
+      { path: "pdfUrl", label: "Docs Download URL" },
       { path: "status", label: "Status" },
     ],
   },
