@@ -11,6 +11,8 @@ import { observation } from "./observation"
 import { openUrl } from "./open-url"
 import { sendEmail } from "./send-email"
 import { aiPrompt } from "./ai-prompt"
+import { datanaut } from "./datanaut"
+import { pdfGenerator } from "./pdf"
 
 
 export type NodeContext = {
@@ -48,6 +50,15 @@ export const nodeExecutors: Partial<Record<NodeType, NodeExecutor>> = {
       stagehand: await getStagehand(),
       instruction: values.instruction ?? "",
       report,
+    }),
+  datanaut: async ({ values }) =>
+    datanaut({
+      dataInput: values.dataInput ?? "",
+      actionType: values.actionType ?? "",
+    }),
+  pdf: async ({ values }) =>
+    pdfGenerator({
+      content: values.content ?? "",
     }),
   "ai-prompt": async ({ values }) =>
     aiPrompt({ prompt: values.prompt ?? "" }),

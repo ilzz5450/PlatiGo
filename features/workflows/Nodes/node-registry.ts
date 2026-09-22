@@ -8,6 +8,8 @@ import {
   Sparkles,
   Bot,
   Mail,
+  Database,
+  FileText,
   type LucideIcon,
 } from "lucide-react"
 
@@ -79,18 +81,18 @@ export const nodeRegistry = {
   extract: {
     type: "extract",
     kind: "action",
-    label: "Extract",
+    label: "Scrapling Extract",
     icon: FileSearch,
     accent: "bg-purple-500 text-white",
     fields: [
       {
         key: "instruction",
         label: "Instruction",
-        placeholder: "Extract the main title and price",
+        placeholder: "Extract the main title and price using Scrapling",
         multiline: true,
       },
     ],
-    outputs: [{ path: "result", label: "Result" }],
+    outputs: [{ path: "result", label: "Result" }, { path: "url", label: "URL" }],
   },
   observation: {
     type: "observation",
@@ -130,6 +132,49 @@ export const nodeRegistry = {
       { path: "url", label: "Final URL" },
     ],
   },
+  datanaut: {
+    type: "datanaut",
+    kind: "action",
+    label: "DataNaut",
+    icon: Database,
+    accent: "bg-indigo-500 text-white",
+    fields: [
+      {
+        key: "dataInput",
+        label: "CSV / Excel Data or Source",
+        placeholder: "Paste CSV data or reference upstream output {{ extract.result }}",
+        multiline: true,
+      },
+      {
+        key: "actionType",
+        label: "Permutation / Action",
+        placeholder: "download-csv or email-csv",
+      },
+    ],
+    outputs: [
+      { path: "csv", label: "CSV Data" },
+      { path: "filename", label: "Filename" },
+    ],
+  },
+  pdf: {
+    type: "pdf",
+    kind: "action",
+    label: "PDF Generator",
+    icon: FileText,
+    accent: "bg-orange-500 text-white",
+    fields: [
+      {
+        key: "content",
+        label: "Content to Convert",
+        placeholder: "Reference upstream result {{ agent.result }}",
+        multiline: true,
+      },
+    ],
+    outputs: [
+      { path: "pdfUrl", label: "PDF Download URL" },
+      { path: "status", label: "Status" },
+    ],
+  },
   "ai-prompt": {
     type: "ai-prompt",
     kind: "action",
@@ -161,12 +206,12 @@ export const nodeRegistry = {
       {
         key: "subject",
         label: "Subject",
-        placeholder: "Hello from Platigo",
+        placeholder: "Ordered Report from Platigo",
       },
       {
         key: "body",
         label: "Body",
-        placeholder: "Write your email body here…",
+        placeholder: "Write your email body or reference {{ agent.result }}",
         multiline: true,
       },
     ],
