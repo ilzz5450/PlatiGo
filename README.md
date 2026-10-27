@@ -31,8 +31,7 @@ Liveblocks project
 Browserbase account
 Resend account
 Optional Sentry project for error monitoring and source maps
-1. Clone and install
-git clone git@github.com:code-with-antonio/browser-automation-app.git
+
 cd browser-automation-app
 npm install
 2. Configure environment
